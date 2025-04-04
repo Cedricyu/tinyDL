@@ -6,6 +6,7 @@
 #include <ctime>
 #include "Linear.cuh"
 #include "SGD.cuh"
+#include "CudaDeviceInfo.h"
 
 inline float sigmoid(float x) { return 1.0f / (1.0f + std::exp(-x)); }
 inline float sigmoid_derivative(float x) {
@@ -108,7 +109,8 @@ void train(int epochs = 1000, int batch_size = 128) {
     }
 }
 
-int main() {
+int main() {    
+    CudaDeviceInfo::PrintAllDevices();
     train();
     return 0;
 }
