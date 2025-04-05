@@ -5,7 +5,7 @@ int main() {
     CudaDeviceInfo::PrintAllDevices();
 
     test_linear();
-    test_mlp();
+    
     // 你可以未來加更多：
     // test_relu();
     // test_step();
