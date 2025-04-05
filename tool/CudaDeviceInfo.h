@@ -17,7 +17,7 @@ struct DeviceInfo {
 };
 
 class CudaDeviceInfo {
-public:
+  public:
     static std::vector<DeviceInfo> GetAllDevices();
     static void PrintAllDevices();
 };
