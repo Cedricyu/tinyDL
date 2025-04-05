@@ -1,9 +1,9 @@
 #pragma once
 
 class SGD {
-public:
+  public:
     SGD(float learning_rate);
-    void add_param(float* param, float* grad, int size);
+    void add_param(float *param, float *grad, int size);
     void step();
     void zero_grad();
 };

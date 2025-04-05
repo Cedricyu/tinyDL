@@ -31,11 +31,9 @@ std::vector<DeviceInfo> CudaDeviceInfo::GetAllDevices() {
 
 void CudaDeviceInfo::PrintAllDevices() {
     auto devices = GetAllDevices();
-    for (const auto& d : devices) {
+    for (const auto &d : devices) {
         std::cout << "Device " << d.deviceId << ": " << d.name << std::endl;
-        std::cout << "  Max Grid Dimensions: "
-                  << d.maxGridDimX << " x "
-                  << d.maxGridDimY << " x "
+        std::cout << "  Max Grid Dimensions: " << d.maxGridDimX << " x " << d.maxGridDimY << " x "
                   << d.maxGridDimZ << std::endl;
         std::cout << "  Max Threads per Block: " << d.maxThreadsPerBlock << std::endl;
         std::cout << "  Max Threads per SM: " << d.maxThreadsPerSM << std::endl;
