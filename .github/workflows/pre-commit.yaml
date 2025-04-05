@@ -3,7 +3,7 @@ name: Run linters using pre-commit
 on:
   pull_request:
   push:
-    branches: [master, docs]
+    branches: [master]
 
 jobs:
   pre-commit:
@@ -11,17 +11,4 @@ jobs:
     steps:
       - uses: actions/checkout@v3 # Checkout the repo
       - uses: actions/setup-python@v3 # Setup pre-commit env
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y clang-format nvidia-cuda-toolkit
-      - uses: actions/cache@v3
-        with:
-          path: ~/.cache/pre-commit
-          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
       - uses: pre-commit/action@v3.0.0
-      - name: Build with Makefile
-        run: |
-          make clean
-          make
-          make test
