@@ -109,7 +109,7 @@ void train(int epochs = 1000, int batch_size = 128) {
     }
 }
 
-int main() {    
+int main() {
     CudaDeviceInfo::PrintAllDevices();
     train();
     return 0;

@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <cassert>
+#include <numeric> // For std::iota, std::fill
 #include "Linear.cuh"
 
 void test_linear() {
@@ -41,13 +42,4 @@ void test_linear() {
     linear1.backward(input.data(), hidden_output.data(), batch_size);
 
     std::cout << "Backward pass done for 2-layer network." << std::endl;
-}
-
-int main() {
-    test_linear();
-
-    // 你可以未來加更多：
-    // test_relu();
-    // test_step();
-    // test_sequential();
 }
