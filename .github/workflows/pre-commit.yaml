@@ -3,7 +3,7 @@ name: Run linters using pre-commit
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [master, docs]
 
 jobs:
   pre-commit:
@@ -19,7 +19,7 @@ jobs:
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
-      - uses: pre-commit/action@v3
+      - uses: pre-commit/action@v3.0.0
       - name: Build with Makefile
         run: |
           make clean
