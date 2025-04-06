@@ -1,7 +1,7 @@
+#include "Linear.cuh"
+#include <cassert>
 #include <iostream>
 #include <vector>
-#include <cassert>
-#include "Linear.cuh"
 
 void test_linear() {
     const int batch_size = 2;
@@ -9,10 +9,7 @@ void test_linear() {
     const int hidden_features = 5;
     const int out_features = 3;
 
-    std::vector<float> input = {
-        1.0f, 2.0f, 3.0f, 4.0f,
-        5.0f, 6.0f, 7.0f, 8.0f
-    }; // shape: 2 x 4
+    std::vector<float> input = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f}; // shape: 2 x 4
 
     std::vector<float> hidden_output(batch_size * hidden_features);
     std::vector<float> final_output(batch_size * out_features);
@@ -32,10 +29,7 @@ void test_linear() {
         std::cout << std::endl;
     }
 
-    std::vector<float> grad_output = {
-        1.0f, 0.5f, -1.0f,
-        -0.5f, 2.0f, 0.0f
-    }; // shape: 2 x 3
+    std::vector<float> grad_output = {1.0f, 0.5f, -1.0f, -0.5f, 2.0f, 0.0f}; // shape: 2 x 3
 
     linear2.backward(hidden_output.data(), grad_output.data(), batch_size);
     linear1.backward(input.data(), hidden_output.data(), batch_size);

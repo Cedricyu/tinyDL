@@ -64,6 +64,14 @@ Builds the project (if needed) and then executes the test programs (`test_linear
 make test
 ```
 
+### Code formatting
+
+Format the code using `clang-format` to ensure consistent style across the project.
+
+```bash
+make format
+```
+
 ### Clean 
 
 Clean generated files and executables.

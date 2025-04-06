@@ -55,5 +55,8 @@ $(OBJ_DIR):
 test: $(EXEC)
 	./$(EXEC)
 
+format: 
+	clang-format -i $(MODULE_SRC) $(MODULE_CPP_SRC) $(OPT_SRC) $(TOOL_CPP_SRC) $(TEST_DIR)/test_train.cpp
+
 clean:
 	rm -rf $(OBJ_DIR) $(EXEC)
