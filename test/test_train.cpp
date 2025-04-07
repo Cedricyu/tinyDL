@@ -27,27 +27,21 @@ void generate_data_classification(float *inputs, int *targets, int batch_size) {
     }
 }
 
-void train(int epochs = 1000, int batch_size = 128) {
+void train(int epochs = 1000, int batch_size = 64) {
     const int input_dim = 2;
     const int hidden_dim = 8;
     const int output_dim = 1;
-
     const int total_data = 1024;
+
+    // 資料準備
     std::vector<float> all_inputs(total_data * input_dim);
     std::vector<int> all_targets(total_data);
     generate_data_classification(all_inputs.data(), all_targets.data(), total_data);
 
-    std::vector<float> inputs(batch_size * input_dim);
-    std::vector<int> targets(batch_size);
-    std::vector<float> hidden(batch_size * hidden_dim);
-    std::vector<float> outputs(batch_size * output_dim);
-    std::vector<float> grad_output(batch_size * output_dim);
-    std::vector<float> grad_hidden(batch_size * hidden_dim);
-
+    // 模型初始化
     Linear layer1(input_dim, hidden_dim);
     Linear layer2(hidden_dim, output_dim);
-
-    SGD optimizer(0.001f);
+    SGD optimizer(0.0001f);
     optimizer.add_param(layer1.d_weight, layer1.d_grad_weight, input_dim * hidden_dim);
     optimizer.add_param(layer1.d_bias, layer1.d_grad_bias, hidden_dim);
     optimizer.add_param(layer2.d_weight, layer2.d_grad_weight, hidden_dim * output_dim);
@@ -58,59 +52,66 @@ void train(int epochs = 1000, int batch_size = 128) {
         int epoch_correct = 0;
 
         for (int i = 0; i < total_data; i += batch_size) {
+            // 取 batch 資料
+            auto x = std::make_shared<Tensor>(batch_size, input_dim);
+            auto y = std::vector<int>(batch_size);
+
             for (int j = 0; j < batch_size; ++j) {
                 int idx = i + j;
-                inputs[j * 2 + 0] = all_inputs[idx * 2 + 0];
-                inputs[j * 2 + 1] = all_inputs[idx * 2 + 1];
-                targets[j] = all_targets[idx];
+                x->data[j * 2 + 0] = all_inputs[idx * 2 + 0];
+                x->data[j * 2 + 1] = all_inputs[idx * 2 + 1];
+                y[j] = all_targets[idx];
             }
 
-            layer1.forward(inputs.data(), hidden.data(), batch_size);
-            for (auto &v : hidden)
-                v = sigmoid(v);
-            layer2.forward(hidden.data(), outputs.data(), batch_size);
+            // Forward
+            auto h = layer1.forward(x); // Tensor
+            for (int j = 0; j < h->size(); ++j)
+                h->data[j] = sigmoid(h->data[j]);
 
+            auto out = layer2.forward(h);
+
+            // Loss & grad_output
+            auto grad_out = std::make_shared<Tensor>(batch_size, output_dim);
             float loss = 0.0f;
             int correct = 0;
             float eps = 1e-7f;
 
             for (int j = 0; j < batch_size; ++j) {
-                float raw = outputs[j];
+                float raw = out->data[j];
                 float prob = sigmoid(raw);
-                float label = static_cast<float>(targets[j]);
+                float label = static_cast<float>(y[j]);
 
                 loss += -(label * std::log(prob + eps) + (1 - label) * std::log(1 - prob + eps));
-                grad_output[j] = prob - label;
+                grad_out->data[j] = prob - label;
 
-                int pred = (prob > 0.5f) ? 1 : 0;
-                if (pred == targets[j])
+                if ((prob > 0.5f) == (y[j] == 1))
                     correct++;
             }
 
-            std::vector<float> grad_hidden
-                = layer2.backward(hidden.data(), grad_output.data(), batch_size);
+            // Backward
+            auto grad_hidden = layer2.backward(h, grad_out);
+            for (int j = 0; j < grad_hidden->size(); ++j)
+                grad_hidden->data[j] *= sigmoid_derivative(h->data[j]);
 
-            for (int j = 0; j < batch_size * hidden_dim; ++j)
-                grad_hidden[j] *= hidden[j] * (1 - hidden[j]);
+            layer1.backward(x, grad_hidden);
 
-            layer1.backward(inputs.data(), grad_hidden.data(), batch_size);
-
+            // 更新權重
             optimizer.step();
+            optimizer.zero_grad();
 
             epoch_loss += loss;
             epoch_correct += correct;
         }
 
         if (epoch % 100 == 0 || epoch == epochs - 1) {
-            std::cout << "Epoch " << epoch << ", BCE Loss: " << epoch_loss / total_data
+            std::cout << "Epoch " << epoch
+                      << ", BCE Loss: " << epoch_loss / total_data
                       << ", Accuracy: " << static_cast<float>(epoch_correct) / total_data
                       << std::endl;
-            layer1.print_weight();
-            layer2.print_weight();
+            layer1.print_weight("Layer1");
+            layer2.print_weight("Layer2");
             std::cout << "----------------------------------------" << std::endl;
         }
-
-        optimizer.zero_grad();
     }
 }
 

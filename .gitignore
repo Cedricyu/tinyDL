@@ -4,6 +4,8 @@
 **/*.so
 **/*.log*
 
+**/*.o
+
 # Python
 .DS_Store
 **/*.egg-info/

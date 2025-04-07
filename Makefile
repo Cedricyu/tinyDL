@@ -22,8 +22,8 @@ MODULE_CPP_OBJ = $(patsubst $(MODULE_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(MODULE_CPP_SR
 OPT_OBJ = $(patsubst $(OPT_DIR)/%.cu, $(OBJ_DIR)/%.o, $(OPT_SRC))
 TOOL_OBJ = $(patsubst $(TOOL_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(TOOL_CPP_SRC))
 
-TEST_OBJ = $(OBJ_DIR)/test_sequentail.o
-EXEC = test_sequentail
+TEST_OBJ = $(OBJ_DIR)/test_train.o
+EXEC = test_train
 
 # === Targets ===
 .PHONY: all test clean
@@ -45,7 +45,7 @@ $(OBJ_DIR)/%.o: $(MODULE_DIR)/%.cpp | $(OBJ_DIR)
 $(OBJ_DIR)/%.o: $(TOOL_DIR)/%.cpp | $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@ || exit 1
 
-$(TEST_OBJ): $(TEST_DIR)/test_sequentail.cpp | $(OBJ_DIR)
+$(TEST_OBJ): $(TEST_DIR)/test_train.cpp | $(OBJ_DIR)
 	$(NVCC) $(CXXFLAGS) -c $< -o $@ || exit 1
 
 # Ensure build dir exists
