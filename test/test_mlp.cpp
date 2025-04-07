@@ -1,8 +1,8 @@
-#include <iostream>
-#include <vector>
-#include <cassert>
-#include <numeric> // For std::iota, std::fill
 #include "MLP.cuh"
+#include <cassert>
+#include <iostream>
+#include <numeric> // For std::iota, std::fill
+#include <vector>
 
 void test_mlp() {
     std::cout << "\n--- Testing MLP  ---\n" << std::endl;
@@ -23,12 +23,12 @@ void test_mlp() {
 
     std::cout << "MLP forward..." << std::endl;
     // mlp.forward(); // This needs modification once MLP::forward is implemented
-                     // to accept input data (e.g., mlp.forward(h_input.data()))
-                     // and potentially return output.
+    // to accept input data (e.g., mlp.forward(h_input.data()))
+    // and potentially return output.
 
     std::cout << "MLP backward..." << std::endl;
     // mlp.backward(); // This needs modification once MLP::backward is implemented
-                      // to accept output gradients (e.g., mlp.backward(h_grad_output.data()))
+    // to accept output gradients (e.g., mlp.backward(h_grad_output.data()))
 
     std::cout << "MLP pass done for " << mlp.num_layers << "-layer network." << std::endl;
 }

@@ -90,7 +90,7 @@ test: $(EXEC_TRAIN)
 	./$(EXEC_TRAIN)
 
 format: 
-	clang-format -i $(MODULE_SRC) $(MODULE_CPP_SRC) $(OPT_SRC) $(TOOL_CPP_SRC) $(TEST_DIR)/test_train.cpp
+	clang-format -i $(MODULE_SRC) $(MODULE_CPP_SRC) $(OPT_SRC) $(TOOL_CPP_SRC) $(TEST_SRC) $(TEST_DIR)/test_train.cpp
 
 clean:
 	rm -rf $(OBJ_DIR) $(TEST_OBJ_DIR) $(EXEC_MAIN) $(EXEC_TRAIN) 

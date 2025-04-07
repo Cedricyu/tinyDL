@@ -1,11 +1,11 @@
-#include "test.h"
 #include "CudaDeviceInfo.h"
+#include "test.h"
 
 int main() {
     CudaDeviceInfo::PrintAllDevices();
 
     test_linear();
-    
+
     // 你可以未來加更多：
     // test_relu();
     // test_step();
