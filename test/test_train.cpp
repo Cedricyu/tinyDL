@@ -87,8 +87,7 @@ void train(int epochs = 1000, int batch_size = 128) {
                     correct++;
             }
 
-            std::vector<float> grad_hidden
-                = layer2.backward(hidden.data(), grad_output.data(), batch_size);
+            std::vector<float> grad_hidden = layer2.backward(hidden.data(), grad_output.data(), batch_size);
 
             for (int j = 0; j < batch_size * hidden_dim; ++j)
                 grad_hidden[j] *= hidden[j] * (1 - hidden[j]);
@@ -103,8 +102,7 @@ void train(int epochs = 1000, int batch_size = 128) {
 
         if (epoch % 100 == 0 || epoch == epochs - 1) {
             std::cout << "Epoch " << epoch << ", BCE Loss: " << epoch_loss / total_data
-                      << ", Accuracy: " << static_cast<float>(epoch_correct) / total_data
-                      << std::endl;
+                      << ", Accuracy: " << static_cast<float>(epoch_correct) / total_data << std::endl;
             layer1.print_weight();
             layer2.print_weight();
             std::cout << "----------------------------------------" << std::endl;

@@ -4,17 +4,8 @@
 
 #define BLOCK_SIZE 16
 
-__global__ void conv2dKernel(float *input,
-                             float *weight,
-                             float *output,
-                             int B,
-                             int C_in,
-                             int H,
-                             int W,
-                             int C_out,
-                             int K,
-                             int outH,
-                             int outW) {
+__global__ void conv2dKernel(
+    float *input, float *weight, float *output, int B, int C_in, int H, int W, int C_out, int K, int outH, int outW) {
     int b = blockIdx.z;         // batch index
     int m = blockIdx.y;         // output channel
     int oh = blockIdx.x / outW; // output height
@@ -26,8 +17,7 @@ __global__ void conv2dKernel(float *input,
             for (int j = 0; j < K; ++j) {
                 int ih = oh + i;
                 int iw = ow + j;
-                val += input[((b * C_in + c) * H + ih) * W + iw]
-                       * weight[((m * C_in + c) * K + i) * K + j];
+                val += input[((b * C_in + c) * H + ih) * W + iw] * weight[((m * C_in + c) * K + i) * K + j];
             }
         }
     }
@@ -40,8 +30,7 @@ class Convolution2D {
     int in_channels, out_channels, kernel_size;
     float *d_weight;
 
-    Convolution2D(int in_c, int out_c, int k)
-        : in_channels(in_c), out_channels(out_c), kernel_size(k) {
+    Convolution2D(int in_c, int out_c, int k) : in_channels(in_c), out_channels(out_c), kernel_size(k) {
         size_t weight_size = in_c * out_c * k * k * sizeof(float);
         cudaMalloc(&d_weight, weight_size);
 
@@ -68,17 +57,8 @@ class Convolution2D {
         dim3 grid(outH * outW, out_channels, B);
         dim3 block(1);
 
-        conv2dKernel<<<grid, block>>>(d_input,
-                                      d_weight,
-                                      d_output,
-                                      B,
-                                      in_channels,
-                                      H,
-                                      W,
-                                      out_channels,
-                                      kernel_size,
-                                      outH,
-                                      outW);
+        conv2dKernel<<<grid, block>>>(
+            d_input, d_weight, d_output, B, in_channels, H, W, out_channels, kernel_size, outH, outW);
 
         cudaMemcpy(output, d_output, output_size, cudaMemcpyDeviceToHost);
 

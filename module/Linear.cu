@@ -51,8 +51,7 @@ __global__ void addBiasKernel(float *C, float *bias, int M, int N) {
     }
 }
 
-__global__ void
-biasGradientKernel(float *grad_output, float *grad_bias, int batch_size, int out_features) {
+__global__ void biasGradientKernel(float *grad_output, float *grad_bias, int batch_size, int out_features) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= out_features)
         return;
@@ -96,11 +95,9 @@ void Linear::forward(float *input, float *output, int batch_size) {
     cudaMemcpy(d_input, input, batch_size * in_features * sizeof(float), cudaMemcpyHostToDevice);
 
     dim3 blockSize(BLOCK_SIZE, BLOCK_SIZE);
-    dim3 gridSize((out_features + BLOCK_SIZE - 1) / BLOCK_SIZE,
-                  (batch_size + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    dim3 gridSize((out_features + BLOCK_SIZE - 1) / BLOCK_SIZE, (batch_size + BLOCK_SIZE - 1) / BLOCK_SIZE);
 
-    matrixMultiplyKernel<<<gridSize, blockSize>>>(
-        d_input, d_weight, d_output, batch_size, in_features, out_features);
+    matrixMultiplyKernel<<<gridSize, blockSize>>>(d_input, d_weight, d_output, batch_size, in_features, out_features);
     addBiasKernel<<<gridSize, blockSize>>>(d_output, d_bias, batch_size, out_features);
 
     cudaMemcpy(output, d_output, batch_size * out_features * sizeof(float), cudaMemcpyDeviceToHost);
@@ -116,15 +113,11 @@ std::vector<float> Linear::backward(float *input, float *grad_output, int batch_
     cudaMalloc(&d_grad_input, batch_size * in_features * sizeof(float)); // ⬅️ NEW
 
     cudaMemcpy(d_input, input, batch_size * in_features * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_grad_output,
-               grad_output,
-               batch_size * out_features * sizeof(float),
-               cudaMemcpyHostToDevice);
+    cudaMemcpy(d_grad_output, grad_output, batch_size * out_features * sizeof(float), cudaMemcpyHostToDevice);
 
     // 1. 計算權重梯度
     dim3 blockSize(BLOCK_SIZE, BLOCK_SIZE);
-    dim3 gridSizeW((out_features + BLOCK_SIZE - 1) / BLOCK_SIZE,
-                   (in_features + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    dim3 gridSizeW((out_features + BLOCK_SIZE - 1) / BLOCK_SIZE, (in_features + BLOCK_SIZE - 1) / BLOCK_SIZE);
     matrixMultiplyKernel<<<gridSizeW, blockSize>>>(
         d_grad_output, d_input, d_grad_weight, out_features, batch_size, in_features);
 
@@ -134,8 +127,7 @@ std::vector<float> Linear::backward(float *input, float *grad_output, int batch_
     biasGradientKernel<<<blocks, threads>>>(d_grad_output, d_grad_bias, batch_size, out_features);
 
     // 3. 計算 ∂L/∂input = grad_output × Wᵀ
-    dim3 gridSizeInput((in_features + BLOCK_SIZE - 1) / BLOCK_SIZE,
-                       (batch_size + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    dim3 gridSizeInput((in_features + BLOCK_SIZE - 1) / BLOCK_SIZE, (batch_size + BLOCK_SIZE - 1) / BLOCK_SIZE);
     matrixMultiplyKernel<<<gridSizeInput, blockSize>>>(d_grad_output,
                                                        d_weight,
                                                        d_grad_input,
@@ -145,10 +137,7 @@ std::vector<float> Linear::backward(float *input, float *grad_output, int batch_
 
     // 4. 複製結果回 host
     std::vector<float> h_grad_input(batch_size * in_features);
-    cudaMemcpy(h_grad_input.data(),
-               d_grad_input,
-               batch_size * in_features * sizeof(float),
-               cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_grad_input.data(), d_grad_input, batch_size * in_features * sizeof(float), cudaMemcpyDeviceToHost);
 
     cudaFree(d_input);
     cudaFree(d_grad_output);
@@ -168,8 +157,7 @@ float Linear::get_weight(int in_idx, int out_idx) const {
     float value;
     // 權重在 GPU 上是以 row-major 排列: [out_features][in_features]
     // 所以取值 index 為: out_idx * in_features + in_idx
-    cudaMemcpy(
-        &value, d_weight + out_idx * in_features + in_idx, sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&value, d_weight + out_idx * in_features + in_idx, sizeof(float), cudaMemcpyDeviceToHost);
     return value;
 }
 
@@ -179,17 +167,10 @@ void Linear::print_weight(const std::string &name) const {
     std::vector<float> h_grad_weight(in_features * out_features);
     std::vector<float> h_grad_bias(out_features);
 
-    cudaMemcpy(h_weight.data(),
-               d_weight,
-               sizeof(float) * in_features * out_features,
-               cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_weight.data(), d_weight, sizeof(float) * in_features * out_features, cudaMemcpyDeviceToHost);
     cudaMemcpy(h_bias.data(), d_bias, sizeof(float) * out_features, cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_grad_weight.data(),
-               d_grad_weight,
-               sizeof(float) * in_features * out_features,
-               cudaMemcpyDeviceToHost);
-    cudaMemcpy(
-        h_grad_bias.data(), d_grad_bias, sizeof(float) * out_features, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_grad_weight.data(), d_grad_weight, sizeof(float) * in_features * out_features, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_grad_bias.data(), d_grad_bias, sizeof(float) * out_features, cudaMemcpyDeviceToHost);
 
     std::cout << "[Linear Layer] " << name << " Weights (partial): ";
     for (int i = 0; i < std::min(10, in_features * out_features); ++i) {

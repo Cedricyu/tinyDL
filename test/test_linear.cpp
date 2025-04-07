@@ -36,12 +36,3 @@ void test_linear() {
 
     std::cout << "Backward pass done for 2-layer network." << std::endl;
 }
-
-int main() {
-    test_linear();
-
-    // 你可以未來加更多：
-    // test_relu();
-    // test_step();
-    // test_sequential();
-}
