@@ -26,7 +26,7 @@ void generate_data_classification(float* inputs, int* targets, int batch_size) {
     }
 }
 
-void train(int epochs = 1000, int batch_size = 128) {
+void train_sequential(int epochs = 1000, int batch_size = 128) {
     const int input_dim = 2;
     const int hidden_dim = 8;
     const int output_dim = 1;
@@ -100,10 +100,4 @@ void train(int epochs = 1000, int batch_size = 128) {
 
         optimizer.zero_grad();
     }
-}
-
-int main() {
-    CudaDeviceInfo::PrintAllDevices();
-    train();
-    return 0;
 }
