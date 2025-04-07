@@ -78,8 +78,7 @@ std::shared_ptr<Tensor> Linear::backward(std::shared_ptr<Tensor> input,
 
     // grad_weight
     dim3 blockSize(BLOCK_SIZE, BLOCK_SIZE);
-    dim3 gridSizeW((out_features + BLOCK_SIZE - 1) / BLOCK_SIZE,
-                   (in_features + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    dim3 gridSizeW((out_features + BLOCK_SIZE - 1) / BLOCK_SIZE, (in_features + BLOCK_SIZE - 1) / BLOCK_SIZE);
     matrixMultiplyKernel<<<gridSizeW, blockSize>>>(
         d_grad_output, d_input, d_grad_weight, out_features, input->batch_size, in_features);
 
@@ -117,8 +116,7 @@ float Linear::get_weight(int in_idx, int out_idx) const {
     float value;
     // 權重在 GPU 上是以 row-major 排列: [out_features][in_features]
     // 所以取值 index 為: out_idx * in_features + in_idx
-    cudaMemcpy(
-        &value, d_weight + out_idx * in_features + in_idx, sizeof(float), cudaMemcpyDeviceToHost);
+    cudaMemcpy(&value, d_weight + out_idx * in_features + in_idx, sizeof(float), cudaMemcpyDeviceToHost);
     return value;
 }
 
@@ -128,17 +126,10 @@ void Linear::print_weight(const std::string &name) const {
     std::vector<float> h_grad_weight(in_features * out_features);
     std::vector<float> h_grad_bias(out_features);
 
-    cudaMemcpy(h_weight.data(),
-               d_weight,
-               sizeof(float) * in_features * out_features,
-               cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_weight.data(), d_weight, sizeof(float) * in_features * out_features, cudaMemcpyDeviceToHost);
     cudaMemcpy(h_bias.data(), d_bias, sizeof(float) * out_features, cudaMemcpyDeviceToHost);
-    cudaMemcpy(h_grad_weight.data(),
-               d_grad_weight,
-               sizeof(float) * in_features * out_features,
-               cudaMemcpyDeviceToHost);
-    cudaMemcpy(
-        h_grad_bias.data(), d_grad_bias, sizeof(float) * out_features, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_grad_weight.data(), d_grad_weight, sizeof(float) * in_features * out_features, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_grad_bias.data(), d_grad_bias, sizeof(float) * out_features, cudaMemcpyDeviceToHost);
 
     std::cout << "[Linear Layer] " << name << " Weights (partial): ";
     for (int i = 0; i < std::min(10, in_features * out_features); ++i) {

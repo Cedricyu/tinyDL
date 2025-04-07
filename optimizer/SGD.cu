@@ -11,8 +11,7 @@ class SGDParam {
     }
 };
 
-__global__ void
-sgd_update_kernel(float *param, float *grad, float lr, int size, float weight_decay) {
+__global__ void sgd_update_kernel(float *param, float *grad, float lr, int size, float weight_decay) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx < size) {
         grad[idx] += weight_decay * param[idx];
