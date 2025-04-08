@@ -20,3 +20,12 @@ __global__ void reluBackwardKernel(float *input, float *grad_output, float *grad
         grad_input[idx] = (input[idx] > 0) ? grad_output[idx] : 0;
     }
 }
+
+__global__ void sigmoidBackwardKernel(float *output, float *grad_output, float *grad_input, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        float sigmoid_out = output[idx];
+        float derivative = sigmoid_out * (1.0f - sigmoid_out);
+        grad_input[idx] = grad_output[idx] * derivative;
+    }
+}
