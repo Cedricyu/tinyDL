@@ -9,5 +9,4 @@ __global__ void reluBackwardKernel(float *input, float *grad_output, float *grad
 
 __global__ void sigmoidBackwardKernel(float *output, float *grad_output, float *grad_input, int size);
 
-
 #endif
