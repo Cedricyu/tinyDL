@@ -1,102 +1,67 @@
 # === Config ===
-NVCC = nvcc
-CXX = g++
-CXXFLAGS = -I./module -I./optimizer -I./tool
-NVCCFLAGS = -I./module -I./tool
-# === Config ===
+NVCC        = nvcc
+CXX         = g++
+CXXFLAGS    = -I./module -I./optimizer -I./tool
+NVCCFLAGS   = -I./module -I./optimizer -I./tool
 
-
-# === Paths ===
-MODULE_DIR = module
-OPT_DIR = optimizer
-TEST_DIR = test
-TOOL_DIR = tool
-OBJ_DIR = build
-# === Paths ===
-
+# === Directories ===
+MODULE_DIR  = module
+OPT_DIR     = optimizer
+TOOL_DIR    = tool
+TEST_DIR    = test
+OBJ_DIR     = build
 
 # === Sources ===
-MODULE_SRC = $(wildcard $(MODULE_DIR)/*.cu)
-MODULE_CPP_SRC = $(wildcard $(MODULE_DIR)/*.cpp)
-OPT_SRC = $(wildcard $(OPT_DIR)/*.cu)
-TOOL_CPP_SRC = $(wildcard $(TOOL_DIR)/*.cpp)
-TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp)
-# === Sources ===
+MODULE_SRC  = $(wildcard $(MODULE_DIR)/*.cu)
+OPT_SRC     = $(wildcard $(OPT_DIR)/*.cu)
+TOOL_SRC    = $(wildcard $(TOOL_DIR)/*.cpp)
+TEST_SRC    = $(TEST_DIR)/test_train.cpp
 
 
 # === Objects ===
-MODULE_OBJ = $(patsubst $(MODULE_DIR)/%.cu, $(OBJ_DIR)/%.o, $(MODULE_SRC))
-MODULE_CPP_OBJ = $(patsubst $(MODULE_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(MODULE_CPP_SRC))
-OPT_OBJ = $(patsubst $(OPT_DIR)/%.cu, $(OBJ_DIR)/%.o, $(OPT_SRC))
-TOOL_OBJ = $(patsubst $(TOOL_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(TOOL_CPP_SRC))
-TEST_OBJ = $(patsubst $(TEST_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(filter-out $(TEST_DIR)/test_train.cpp $(TEST_DIR)/test_linear.cpp $(TEST_DIR)/test_sequential.cpp, $(TEST_SRC)))
-MAIN_OBJ = $(OBJ_DIR)/test_main.o
-# TRAIN_OBJ = $(OBJ_DIR)/test_train.o
-# === Objects ===
-
+MODULE_OBJ  = $(patsubst $(MODULE_DIR)/%.cu, $(OBJ_DIR)/%.o, $(MODULE_SRC))
+OPT_OBJ     = $(patsubst $(OPT_DIR)/%.cu, $(OBJ_DIR)/%.o, $(OPT_SRC))
+TOOL_OBJ    = $(patsubst $(TOOL_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(TOOL_SRC))
+TEST_OBJ    = $(OBJ_DIR)/test_train.o
 
 # === Variables ===
-EXEC_MAIN = test_main
-# EXEC_TRAIN = test_train
-# === Variables ===
-
+EXEC        = test_train
 
 # === Targets ===
 .PHONY: all test clean format
 
 all: $(EXEC_MAIN)
 	@echo "===== Build Complete ====="
-# === Targets ===
 
-
-# === Executable ===
-$(EXEC_MAIN): $(MODULE_OBJ) $(MODULE_CPP_OBJ) $(OPT_OBJ) $(TOOL_OBJ) $(TEST_OBJ)
+$(EXEC): $(MODULE_OBJ) $(OPT_OBJ) $(TOOL_OBJ) $(TEST_OBJ)
 	$(NVCC) -o $@ $^
 
-# $(EXEC_TRAIN): $(MODULE_OBJ) $(MODULE_CPP_OBJ) $(OPT_OBJ) $(TOOL_OBJ) $(TRAIN_OBJ)
-# 	$(NVCC) -o $@ $^
-# === Executable ===
-
-
-# === Compilation ===
-# === .cu ===
+# Compile .cu
 $(OBJ_DIR)/%.o: $(MODULE_DIR)/%.cu | $(OBJ_DIR)
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@ || exit 1
+	$(NVCC) $(NVCCFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/%.o: $(OPT_DIR)/%.cu | $(OBJ_DIR)
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@ || exit 1
-# === .cu ===
+	$(NVCC) $(NVCCFLAGS) -c $< -o $@
 
-# === .cpp ===
-$(OBJ_DIR)/%.o: $(MODULE_DIR)/%.cpp | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@ || exit 1
-
-$(OBJ_DIR)/%.o: $(OPT_DIR)/%.cpp | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@ || exit 1
-
+# Compile .cpp
 $(OBJ_DIR)/%.o: $(TOOL_DIR)/%.cpp | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@ || exit 1
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/%.o: $(TEST_DIR)/%.cpp | $(OBJ_DIR)
-	$(CXX) $(CXXFLAGS) -c $< -o $@ || exit 1
+$(OBJ_DIR)/test_train.o: $(TEST_SRC) | $(OBJ_DIR)
+	$(NVCC) $(CXXFLAGS) -c $< -o $@
 
-# $(TEST_OBJ): $(TEST_DIR)/test_sequential.cpp | $(OBJ_DIR)
-# 	$(NVCC) $(CXXFLAGS) -c $< -o $@ || exit 1
-# === .cpp ===
-# === Compilation ===
-
-# === Directories ===
+# Build build/ directory
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
-# === Directories ===
 
-# === Command ===
-test: $(EXEC_MAIN)
-	./$(EXEC_MAIN)
+# Execute
+test: $(EXEC)
+	./$(EXEC)
 
-format: 
-	clang-format -i $(MODULE_SRC) $(MODULE_CPP_SRC) $(OPT_SRC) $(TOOL_CPP_SRC) $(TEST_SRC)
+# Format Codes
+format:
+	clang-format -i $(MODULE_SRC) $(OPT_SRC) $(TOOL_SRC) $(TEST_SRC)
 
+# Clean built files
 clean:
-	rm -rf $(OBJ_DIR) $(EXEC_MAIN)
-# === Command ===
+	rm -rf $(OBJ_DIR) $(EXEC)
