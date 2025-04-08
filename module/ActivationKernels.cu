@@ -1,5 +1,12 @@
 #include "ActivationKernels.cuh"
 
+__global__ void sigmoidKernel(float *input, float *output, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        output[idx] = 1.0f / (1.0f + expf(-input[idx]));
+    }
+}
+
 __global__ void reluKernel(float *input, float *output, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
