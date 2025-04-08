@@ -1,5 +1,6 @@
 #include "MLP.cuh"
 #include <cassert>
+#include <cuda_runtime.h>
 #include <iostream>
 #include <numeric> // For std::iota, std::fill
 #include <vector>
@@ -22,13 +23,17 @@ void test_mlp() {
     std::fill(h_grad_output.begin(), h_grad_output.end(), 0.5f); // Fill with 0.5
 
     std::cout << "MLP forward..." << std::endl;
-    // mlp.forward(); // This needs modification once MLP::forward is implemented
-    // to accept input data (e.g., mlp.forward(h_input.data()))
-    // and potentially return output.
+    auto input_tensor = std::make_shared<Tensor>(batch_size, input_features);
+    cudaMemcpy(input_tensor->data, h_input.data(), batch_size * input_features * sizeof(float), cudaMemcpyHostToDevice);
+    auto output_tensor = mlp.forward(input_tensor);
 
     std::cout << "MLP backward..." << std::endl;
-    // mlp.backward(); // This needs modification once MLP::backward is implemented
-    // to accept output gradients (e.g., mlp.backward(h_grad_output.data()))
+    auto grad_output_tensor = std::make_shared<Tensor>(batch_size, output_features);
+    cudaMemcpy(grad_output_tensor->data,
+               h_grad_output.data(),
+               batch_size * output_features * sizeof(float),
+               cudaMemcpyHostToDevice);
+    mlp.backward(input_tensor, grad_output_tensor);
 
     std::cout << "MLP pass done for " << mlp.num_layers << "-layer network." << std::endl;
 }

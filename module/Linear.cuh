@@ -1,9 +1,9 @@
 #pragma once
+#include "Tensor.cuh"
+#include <cublas_v2.h>
+#include <memory>
 #include <string>
 #include <vector>
-#include <memory>     
-#include "Tensor.cuh" 
-#include <cublas_v2.h>
 
 class Linear {
   public:
@@ -15,8 +15,7 @@ class Linear {
 
     Linear(int in_f, int out_f);
     std::shared_ptr<Tensor> forward(std::shared_ptr<Tensor> input);
-    std::shared_ptr<Tensor> backward(std::shared_ptr<Tensor> input,
-                                     std::shared_ptr<Tensor> grad_output);
+    std::shared_ptr<Tensor> backward(std::shared_ptr<Tensor> input, std::shared_ptr<Tensor> grad_output);
     void print_weight(const std::string &name = "") const;
     float get_weight(int in_idx, int out_idx) const;
     ~Linear();

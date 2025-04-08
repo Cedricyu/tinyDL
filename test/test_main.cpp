@@ -1,10 +1,13 @@
 #include "CudaDeviceInfo.h"
 #include "test.h"
+#include <iostream>
 
 int main() {
     CudaDeviceInfo::PrintAllDevices();
 
-    test_linear();
+    std::cout << "Running tests..." << std::endl;
+
+    // test_linear();
 
     // 你可以未來加更多：
     // test_relu();

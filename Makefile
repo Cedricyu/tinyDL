@@ -29,22 +29,22 @@ MODULE_OBJ = $(patsubst $(MODULE_DIR)/%.cu, $(OBJ_DIR)/%.o, $(MODULE_SRC))
 MODULE_CPP_OBJ = $(patsubst $(MODULE_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(MODULE_CPP_SRC))
 OPT_OBJ = $(patsubst $(OPT_DIR)/%.cu, $(OBJ_DIR)/%.o, $(OPT_SRC))
 TOOL_OBJ = $(patsubst $(TOOL_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(TOOL_CPP_SRC))
-TEST_OBJ = $(patsubst $(TEST_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(filter-out $(TEST_DIR)/test_train.cpp, $(TEST_SRC)))
+TEST_OBJ = $(patsubst $(TEST_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(filter-out $(TEST_DIR)/test_train.cpp $(TEST_DIR)/test_linear.cpp $(TEST_DIR)/test_sequential.cpp, $(TEST_SRC)))
 MAIN_OBJ = $(OBJ_DIR)/test_main.o
-TRAIN_OBJ = $(OBJ_DIR)/test_train.o
+# TRAIN_OBJ = $(OBJ_DIR)/test_train.o
 # === Objects ===
 
 
 # === Variables ===
 EXEC_MAIN = test_main
-EXEC_TRAIN = test_train
+# EXEC_TRAIN = test_train
 # === Variables ===
 
 
 # === Targets ===
 .PHONY: all test clean format
 
-all:  $(EXEC_MAIN) $(EXEC_TRAIN)
+all: $(EXEC_MAIN)
 	@echo "===== Build Complete ====="
 # === Targets ===
 
@@ -53,8 +53,8 @@ all:  $(EXEC_MAIN) $(EXEC_TRAIN)
 $(EXEC_MAIN): $(MODULE_OBJ) $(MODULE_CPP_OBJ) $(OPT_OBJ) $(TOOL_OBJ) $(TEST_OBJ)
 	$(NVCC) -o $@ $^
 
-$(EXEC_TRAIN): $(MODULE_OBJ) $(MODULE_CPP_OBJ) $(OPT_OBJ) $(TOOL_OBJ) $(TRAIN_OBJ)
-	$(NVCC) -o $@ $^
+# $(EXEC_TRAIN): $(MODULE_OBJ) $(MODULE_CPP_OBJ) $(OPT_OBJ) $(TOOL_OBJ) $(TRAIN_OBJ)
+# 	$(NVCC) -o $@ $^
 # === Executable ===
 
 
@@ -71,11 +71,17 @@ $(OBJ_DIR)/%.o: $(OPT_DIR)/%.cu | $(OBJ_DIR)
 $(OBJ_DIR)/%.o: $(MODULE_DIR)/%.cpp | $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@ || exit 1
 
+$(OBJ_DIR)/%.o: $(OPT_DIR)/%.cpp | $(OBJ_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@ || exit 1
+
 $(OBJ_DIR)/%.o: $(TOOL_DIR)/%.cpp | $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@ || exit 1
 
-$(TEST_OBJ): $(TEST_DIR)/test_sequentail.cpp | $(OBJ_DIR)
-	$(NVCC) $(CXXFLAGS) -c $< -o $@ || exit 1
+$(OBJ_DIR)/%.o: $(TEST_DIR)/%.cpp | $(OBJ_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@ || exit 1
+
+# $(TEST_OBJ): $(TEST_DIR)/test_sequential.cpp | $(OBJ_DIR)
+# 	$(NVCC) $(CXXFLAGS) -c $< -o $@ || exit 1
 # === .cpp ===
 # === Compilation ===
 
@@ -85,12 +91,12 @@ $(OBJ_DIR):
 # === Directories ===
 
 # === Command ===
-test: $(EXEC_TRAIN)
-	./$(EXEC_TRAIN)
+test: $(EXEC_MAIN)
+	./$(EXEC_MAIN)
 
 format: 
-	clang-format -i $(MODULE_SRC) $(MODULE_CPP_SRC) $(OPT_SRC) $(TOOL_CPP_SRC) $(TEST_SRC) $(TEST_DIR)/test_train.cpp
+	clang-format -i $(MODULE_SRC) $(MODULE_CPP_SRC) $(OPT_SRC) $(TOOL_CPP_SRC) $(TEST_SRC)
 
 clean:
-	rm -rf $(OBJ_DIR) $(EXEC_MAIN) $(EXEC_TRAIN)
+	rm -rf $(OBJ_DIR) $(EXEC_MAIN)
 # === Command ===

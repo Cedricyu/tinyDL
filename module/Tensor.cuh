@@ -3,8 +3,8 @@
 #define TENSOR_H
 
 class Tensor {
-public:
-    float* data;
+  public:
+    float *data;
     int batch_size;
     int features;
 
@@ -12,8 +12,8 @@ public:
         data = new float[batch * feat]();
     }
 
-    Tensor(float* external, int batch, int feat)
-        : data(external), batch_size(batch), features(feat) {}
+    Tensor(float *external, int batch, int feat) : data(external), batch_size(batch), features(feat) {
+    }
 
     int size() const {
         return batch_size * features;

@@ -104,10 +104,8 @@ void train(int epochs = 1000, int batch_size = 64) {
         }
 
         if (epoch % 100 == 0 || epoch == epochs - 1) {
-            std::cout << "Epoch " << epoch
-                      << ", BCE Loss: " << epoch_loss / total_data
-                      << ", Accuracy: " << static_cast<float>(epoch_correct) / total_data
-                      << std::endl;
+            std::cout << "Epoch " << epoch << ", BCE Loss: " << epoch_loss / total_data
+                      << ", Accuracy: " << static_cast<float>(epoch_correct) / total_data << std::endl;
             layer1.print_weight("Layer1");
             layer2.print_weight("Layer2");
             std::cout << "----------------------------------------" << std::endl;
