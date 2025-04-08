@@ -17,52 +17,51 @@ OPT_SRC     = $(wildcard $(OPT_DIR)/*.cu)
 TOOL_SRC    = $(wildcard $(TOOL_DIR)/*.cpp)
 TEST_SRC    = $(TEST_DIR)/test_train.cpp
 
+
 # === Objects ===
 MODULE_OBJ  = $(patsubst $(MODULE_DIR)/%.cu, $(OBJ_DIR)/%.o, $(MODULE_SRC))
 OPT_OBJ     = $(patsubst $(OPT_DIR)/%.cu, $(OBJ_DIR)/%.o, $(OPT_SRC))
 TOOL_OBJ    = $(patsubst $(TOOL_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(TOOL_SRC))
 TEST_OBJ    = $(OBJ_DIR)/test_train.o
 
-# === Executable ===
+# === Variables ===
 EXEC        = test_train
 
 # === Targets ===
-.PHONY: all run clean format
+.PHONY: all test clean format
 
-all: $(EXEC)
-	@echo "=== Build complete ==="
+all: $(EXEC_MAIN)
+	@echo "===== Build Complete ====="
 
 $(EXEC): $(MODULE_OBJ) $(OPT_OBJ) $(TOOL_OBJ) $(TEST_OBJ)
 	$(NVCC) -o $@ $^
 
-# === Rules ===
-
-# 編譯 .cu
+# Compile .cu
 $(OBJ_DIR)/%.o: $(MODULE_DIR)/%.cu | $(OBJ_DIR)
 	$(NVCC) $(NVCCFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/%.o: $(OPT_DIR)/%.cu | $(OBJ_DIR)
 	$(NVCC) $(NVCCFLAGS) -c $< -o $@
 
-# 編譯 .cpp
+# Compile .cpp
 $(OBJ_DIR)/%.o: $(TOOL_DIR)/%.cpp | $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 $(OBJ_DIR)/test_train.o: $(TEST_SRC) | $(OBJ_DIR)
 	$(NVCC) $(CXXFLAGS) -c $< -o $@
 
-# 建立 build/ 目錄
+# Build build/ directory
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 
-# 執行
+# Execute
 test: $(EXEC)
 	./$(EXEC)
 
-# 格式化
+# Format Codes
 format:
 	clang-format -i $(MODULE_SRC) $(OPT_SRC) $(TOOL_SRC) $(TEST_SRC)
 
-# 清除編譯產物
+# Clean built files
 clean:
 	rm -rf $(OBJ_DIR) $(EXEC)

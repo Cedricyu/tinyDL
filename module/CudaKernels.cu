@@ -43,8 +43,7 @@ __global__ void addBiasKernel(float *C, float *bias, int M, int N) {
     }
 }
 
-__global__ void
-biasGradientKernel(float *grad_output, float *grad_bias, int batch_size, int out_features) {
+__global__ void biasGradientKernel(float *grad_output, float *grad_bias, int batch_size, int out_features) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= out_features)
         return;

@@ -9,7 +9,6 @@ __global__ void addBiasKernel(float *C, float *bias, int M, int N);
 
 __global__ void biasGradientKernel(float *grad_output, float *grad_bias, int batch_size, int out_features);
 
-__global__ void matrixTransposeMulKernel(float* A, float* B, float* C,
-    int M, int N, int K);
+__global__ void matrixTransposeMulKernel(float *A, float *B, float *C, int M, int N, int K);
 
 #endif
