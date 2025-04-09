@@ -72,6 +72,18 @@ Format the code using `clang-format` to ensure consistent style across the proje
 make format
 ```
 
+You can run pre-commit hooks before commiting your changes to ensure code quality and style consistency.
+
+```bash
+pre-commit run --all-files
+```
+
+If pre-commit is not installed, you can install with:
+
+```bash
+pre-commit install
+```
+
 ### Clean 
 
 Clean generated files and executables.
