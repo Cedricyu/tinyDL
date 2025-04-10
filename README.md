@@ -47,6 +47,12 @@ You can check the Toolkit version and Driver matches via by running:
 nvidia-smi
 ```
 
+For code styles and format, you can install with:
+
+```bash
+pre-commit install
+```
+
 
 ### Build everything
 
@@ -70,6 +76,12 @@ Format the code using `clang-format` to ensure consistent style across the proje
 
 ```bash
 make format
+```
+
+The pre-commit hook will automatically check the formatting of your code before committing. If the formatting is not correct, it will automatically format the code for you. Also, You can run pre-commit against all files to ensure format passed before commiting your changes to ensure code quality and style consistency.
+
+```bash
+pre-commit run --all-files
 ```
 
 ### Clean 
