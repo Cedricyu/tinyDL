@@ -35,6 +35,13 @@ __global__ void softmaxKernel(float *input, float *output, int size) {
     }
 }
 
+__global__ void tanhKernel(float *input, float *output, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        output[idx] = tanhf(input[idx]);
+    }
+}
+
 __global__ void sigmoidBackwardKernel(float *output, float *grad_output, float *grad_input, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
@@ -59,5 +66,13 @@ __global__ void softmaxBackwardKernel(float *output, float *grad_output, float *
             sum += output[j] * grad_output[j];
         }
         grad_input[idx] = output[idx] * (grad_output[idx] - sum);
+    }
+}
+
+__global__ void tanhBackwardKernel(float *output, float *grad_output, float *grad_input, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        float tanh_val = tanhf(output[idx]);
+        grad_input[idx] = grad_output[idx] * (1.0f - tanh_val * tanh_val);
     }
 }
