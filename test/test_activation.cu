@@ -6,7 +6,6 @@
 void leaky_relu_forward(float *h_input, float *h_output, float alpha, int size) {
     float *d_input, *d_output;
 
-    float *d_input, *d_output;
     checkCudaError(cudaMalloc(&d_input, size * sizeof(float)), "Failed to allocate d_input.");
     checkCudaError(cudaMalloc(&d_output, size * sizeof(float)), "Failed to allocate d_output.");
 
@@ -39,7 +38,10 @@ void leaky_relu_backward(float *h_input, float *h_grad_output, float *h_grad_inp
     int threadsPerBlock = 256;
     int blocksPerGrid = (size + threadsPerBlock - 1) / threadsPerBlock;
     leakyReluBackwardKernel<<<blocksPerGrid, threadsPerBlock>>>(d_input, d_grad_output, d_grad_input, alpha, size);
-    checkCudaError(cudaGetLastError(), "Kernel launch failed.");
+    checkCudaError(cudaGetLastError(), "Backward Kernel launch failed.");
+
+    checkCudaError(cudaMemcpy(h_grad_input, d_grad_input, size * sizeof(float), cudaMemcpyDeviceToHost),
+                   "Failed to copy d_grad_input to host.");
 
     cudaFree(d_input);
     cudaFree(d_grad_output);
@@ -57,14 +59,14 @@ void test_leaky_relu() {
 
     for (int i = 0; i < size; ++i) {
         h_input[i] = -2.0f + (4.0f * i) / (size - 1);
-        h_grad_input[i] = 1.0f;
+        h_grad_output[i] = 1.0f;
     }
 
     leaky_relu_forward(h_input, h_output, alpha, size);
     leaky_relu_backward(h_input, h_grad_output, h_grad_input, alpha, size);
 
     std::cout << "Leaky ReLU Check: " << std::endl;
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < size; ++i) {
         std::cout << "Input: " << h_input[i] << ", Foward Output: " << h_output[i]
                   << ", Grad Output: " << h_grad_output[i] << ", Grad Input: " << h_grad_input[i] << std::endl;
     }
@@ -73,5 +75,16 @@ void test_leaky_relu() {
     delete[] h_output;
     delete[] h_grad_input;
     delete[] h_grad_output;
-    std::cout << "Leaky ReLU Check Passed!" << std::endl;
+    std::cout << "Leaky ReLU Check Done!" << std::endl;
+}
+
+int main() {
+    std::cout << "Activation Kernel Test Start." << std::endl;
+    std::cout << "========================" << std::endl;
+
+    test_leaky_relu();
+
+    std::cout << "========================" << std::endl;
+    std::cout << "Activation Kernel Test End." << std::endl;
+    return 0;
 }
