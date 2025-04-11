@@ -189,6 +189,46 @@ void leaky_relu_backward(float *h_input, float *h_grad_output, float *h_grad_inp
     cudaFree(d_grad_input);
 }
 
+void elu_forward(float *h_input, float *h_output, float alpha, int size) {
+    float *d_input, *d_output;
+
+    checkCudaError(cudaMalloc(&d_input, size * sizeof(float)), "Failed to allocate d_input.");
+    checkCudaError(cudaMalloc(&d_output, size * sizeof(float)), "Failed to allocate d_output.");
+    checkCudaError(cudaMemcpy(d_input, h_input, size * sizeof(float), cudaMemcpyHostToDevice),
+                   "Failed to copy d_input to device.");
+
+    int blocksPerGrid = (size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    eluKernel<<<blocksPerGrid, THREADS_PER_BLOCK>>>(d_input, d_output, alpha, size);
+    checkCudaError(cudaGetLastError(), "Kernel launch failed.");
+    checkCudaError(cudaMemcpy(h_output, d_output, size * sizeof(float), cudaMemcpyDeviceToHost),
+                   "Failed to copy d_output to host.");
+
+    cudaFree(d_input);
+    cudaFree(d_output);
+}
+
+void elu_backward(float *h_input, float *h_grad_output, float *h_grad_input, float alpha, int size) {
+    float *d_input, *d_grad_output, *d_grad_input;
+
+    checkCudaError(cudaMalloc(&d_input, size * sizeof(float)), "Failed to allocate d_input.");
+    checkCudaError(cudaMalloc(&d_grad_output, size * sizeof(float)), "Failed to allocate d_grad_output.");
+    checkCudaError(cudaMalloc(&d_grad_input, size * sizeof(float)), "Failed to allocate d_grad_input.");
+    checkCudaError(cudaMemcpy(d_input, h_input, size * sizeof(float), cudaMemcpyHostToDevice),
+                   "Failed to copy d_input to device.");
+    checkCudaError(cudaMemcpy(d_grad_output, h_grad_output, size * sizeof(float), cudaMemcpyHostToDevice),
+                   "Failed to copy d_grad_output to device.");
+
+    int blocksPerGrid = (size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    eluBackwardKernel<<<blocksPerGrid, THREADS_PER_BLOCK>>>(d_input, d_grad_output, d_grad_input, alpha, size);
+    checkCudaError(cudaGetLastError(), "Backward Kernel launch failed.");
+    checkCudaError(cudaMemcpy(h_grad_input, d_grad_input, size * sizeof(float), cudaMemcpyDeviceToHost),
+                   "Failed to copy d_grad_input to host.");
+
+    cudaFree(d_input);
+    cudaFree(d_grad_output);
+    cudaFree(d_grad_input);
+}
+
 void softmax_forward(float *h_input, float *h_output, int size) {
     float *d_input, *d_output;
 
@@ -298,6 +338,10 @@ int main() {
     std::cout << "------------------------" << std::endl;
 
     test_activation_kernel("Leaky ReLU", leaky_relu_forward, leaky_relu_backward, LEKEY_RELU_ALPHA, TEST_SIZE);
+
+    std::cout << "------------------------" << std::endl;
+
+    test_activation_kernel("ELU", elu_forward, elu_backward, 1.0f, TEST_SIZE);
 
     std::cout << "------------------------" << std::endl;
 

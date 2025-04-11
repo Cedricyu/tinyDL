@@ -22,6 +22,14 @@ __global__ void leakyReluKernel(float *input, float *output, float alpha, int si
     }
 }
 
+__global__ void eluKernel(float *input, float *output, float alpha, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        float x = input[idx];
+        output[idx] = (x > 0) ? x : alpha * (expf(x) - 1);
+    }
+}
+
 __global__ void softmaxKernel(float *input, float *output, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
@@ -71,6 +79,15 @@ __global__ void leakyReluBackwardKernel(float *input, float *grad_output, float 
     if (idx < size) {
         float x = input[idx];
         grad_input[idx] = (x > 0) ? grad_output[idx] : alpha * grad_output[idx];
+    }
+}
+
+__global__ void eluBackwardKernel(float *input, float *grad_output, float *grad_input, float alpha, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        float x = input[idx];
+        float derivative = (x > 0) ? 1 : alpha * expf(x);
+        grad_input[idx] = grad_output[idx] * derivative;
     }
 }
 
