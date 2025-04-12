@@ -7,6 +7,15 @@ __global__ void sigmoidKernel(float *input, float *output, int size) {
     }
 }
 
+__global__ void swishKernel(float *input, float *output, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        float x = input[idx];
+        float sigmoid_x = 1.0f / (1.0f + expf(-x));
+        output[idx] = x * sigmoid_x;
+    }
+}
+
 __global__ void reluKernel(float *input, float *output, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
@@ -63,6 +72,16 @@ __global__ void sigmoidBackwardKernel(float *input, float *grad_output, float *g
     if (idx < size) {
         float sigmoid_out = input[idx];
         float derivative = sigmoid_out * (1.0f - sigmoid_out);
+        grad_input[idx] = grad_output[idx] * derivative;
+    }
+}
+
+__global__ void swishBackwardKernel(float *input, float *grad_output, float *grad_input, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        float x = input[idx];
+        float sigmoid_x = 1.0f / (1.0f + expf(-x));
+        float derivative = sigmoid_x + x * sigmoid_x * (1.0f - sigmoid_x);
         grad_input[idx] = grad_output[idx] * derivative;
     }
 }

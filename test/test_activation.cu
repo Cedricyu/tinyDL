@@ -7,7 +7,9 @@
 
 const int THREADS_PER_BLOCK = 256;
 const int TEST_SIZE = 1024;
+const int PRINT_COUNT = 32;
 const float LEKEY_RELU_ALPHA = 0.01f;
+const float ELU_ALPHA = 1.0f;
 
 // Generic Activation Kernel Setup ---
 //   Note: A more robust solution might use std::function or templates if complexity increases.
@@ -19,7 +21,7 @@ void test_activation_kernel(const std::string &name,
                             HostBackwardFunc backward_func,
                             float param,
                             int size,
-                            int count = THREADS_PER_BLOCK) {
+                            int count = PRINT_COUNT) {
     std::cout << name << " Check: " << std::endl;
 
     float *h_input = new float[size];
@@ -95,6 +97,50 @@ void sigmoid_backward(float *h_input, float *h_grad_output, float *h_grad_input,
 
 void sigmoid_backward_wrapper(float *h_input, float *h_grad_output, float *h_grad_input, float _, int size) {
     sigmoid_backward(h_input, h_grad_output, h_grad_input, size);
+}
+
+void swish_foward(float *h_input, float *h_output, int size) {
+    float *d_input, *d_output;
+
+    checkCudaError(cudaMalloc(&d_input, size * sizeof(float)), "Failed to allocate d_input.");
+    checkCudaError(cudaMalloc(&d_output, size * sizeof(float)), "Failed to allocate d_output.");
+    checkCudaError(cudaMemcpy(d_input, h_input, size * sizeof(float), cudaMemcpyHostToDevice),
+                   "Failed to copy d_input to device.");
+
+    int blocksPerGrid = (size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    swishKernel<<<blocksPerGrid, THREADS_PER_BLOCK>>>(d_input, d_output, size);
+    checkCudaError(cudaGetLastError(), "Kernel launch failed.");
+    checkCudaError(cudaMemcpy(h_output, d_output, size * sizeof(float), cudaMemcpyDeviceToHost),
+                   "Failed to copy d_output to host.");
+
+    cudaFree(d_input);
+    cudaFree(d_output);
+}
+
+void swish_foward_wrapper(float *h_input, float *h_output, float _, int size) {
+    swish_foward(h_input, h_output, size);
+}
+
+void swish_backward_wrapper(float *h_input, float *h_grad_output, float *h_grad_input, float _, int size) {
+    float *d_input, *d_grad_output, *d_grad_input;
+
+    checkCudaError(cudaMalloc(&d_input, size * sizeof(float)), "Failed to allocate d_input.");
+    checkCudaError(cudaMalloc(&d_grad_output, size * sizeof(float)), "Failed to allocate d_grad_output.");
+    checkCudaError(cudaMalloc(&d_grad_input, size * sizeof(float)), "Failed to allocate d_grad_input.");
+    checkCudaError(cudaMemcpy(d_input, h_input, size * sizeof(float), cudaMemcpyHostToDevice),
+                   "Failed to copy d_input to device.");
+    checkCudaError(cudaMemcpy(d_grad_output, h_grad_output, size * sizeof(float), cudaMemcpyHostToDevice),
+                   "Failed to copy d_grad_output to device.");
+
+    int blocksPerGrid = (size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    swishBackwardKernel<<<blocksPerGrid, THREADS_PER_BLOCK>>>(d_input, d_grad_output, d_grad_input, size);
+    checkCudaError(cudaGetLastError(), "Backward Kernel launch failed.");
+    checkCudaError(cudaMemcpy(h_grad_input, d_grad_input, size * sizeof(float), cudaMemcpyDeviceToHost),
+                   "Failed to copy d_grad_input to host.");
+
+    cudaFree(d_input);
+    cudaFree(d_grad_output);
+    cudaFree(d_grad_input);
 }
 
 void relu_forward(float *h_input, float *h_output, int size) {
@@ -333,6 +379,10 @@ int main() {
 
     std::cout << "------------------------" << std::endl;
 
+    test_activation_kernel("Swish", swish_foward_wrapper, swish_backward_wrapper, 0.0f, TEST_SIZE);
+
+    std::cout << "------------------------" << std::endl;
+
     test_activation_kernel("ReLU", relu_forward_wrapper, relu_backward_wrapper, 0.0f, TEST_SIZE);
 
     std::cout << "------------------------" << std::endl;
@@ -341,7 +391,7 @@ int main() {
 
     std::cout << "------------------------" << std::endl;
 
-    test_activation_kernel("ELU", elu_forward, elu_backward, 1.0f, TEST_SIZE);
+    test_activation_kernel("ELU", elu_forward, elu_backward, ELU_ALPHA, TEST_SIZE);
 
     std::cout << "------------------------" << std::endl;
 

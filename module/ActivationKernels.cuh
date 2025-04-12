@@ -3,6 +3,8 @@
 
 __global__ void sigmoidKernel(float *input, float *output, int size);
 
+__global__ void swishKernel(float *input, float *output, int size);
+
 __global__ void reluKernel(float *input, float *output, int size);
 
 __global__ void leakyReluKernel(float *input, float *output, float alpha, int size);
@@ -14,6 +16,8 @@ __global__ void softmaxKernel(float *input, float *output, int size);
 __global__ void tanhKernel(float *input, float *output, int size);
 
 __global__ void sigmoidBackwardKernel(float *input, float *grad_output, float *grad_input, int size);
+
+__global__ void swishBackwardKernel(float *input, float *grad_output, float *grad_input, int size);
 
 __global__ void reluBackwardKernel(float *input, float *grad_output, float *grad_input, int size);
 
