@@ -67,6 +67,18 @@ __global__ void tanhKernel(float *input, float *output, int size) {
     }
 }
 
+__global__ void geluKernel(float *input, float *output, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        float x = input[idx];
+        // Constants for GELU approximation
+        const float sqrt_2_over_pi = 0.7978845608f;
+        const float c = 0.044715f;
+        float z = sqrt_2_over_pi * (x + c * x * x * x);
+        output[idx] = 0.5f * x * (1.0f + tanhf(z));
+    }
+}
+
 __global__ void sigmoidBackwardKernel(float *input, float *grad_output, float *grad_input, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < size) {
@@ -126,5 +138,21 @@ __global__ void tanhBackwardKernel(float *input, float *grad_output, float *grad
     if (idx < size) {
         float tanh_val = tanhf(input[idx]);
         grad_input[idx] = grad_output[idx] * (1.0f - tanh_val * tanh_val);
+    }
+}
+
+__global__ void geluBackwardKernel(float *input, float *grad_output, float *grad_input, int size) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx < size) {
+        float x = input[idx];
+        // Constants for GELU approximation
+        const float sqrt_2_over_pi = 0.7978845608f;
+        const float c = 0.044715f;
+        float z = sqrt_2_over_pi * (x + c * x * x * x);
+        float tanh_z = tanhf(z);
+        float sech_z_sq = 1.0f - tanh_z * tanh_z;
+        float dz_dx = sqrt_2_over_pi * (1.0f + c * 3.0f * x * x);
+        float derivative = 0.5f * (1.0f + tanh_z) + 0.5f * x * sech_z_sq * dz_dx;
+        grad_input[idx] = grad_output[idx] * derivative;
     }
 }

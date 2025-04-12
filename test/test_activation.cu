@@ -371,6 +371,54 @@ void tanh_backward_wrapper(float *h_input, float *h_grad_output, float *h_grad_i
     tanh_backward(h_input, h_grad_output, h_grad_input, size);
 }
 
+void geluForward(float *h_input, float *h_output, int size) {
+    float *d_input, *d_output;
+
+    checkCudaError(cudaMalloc(&d_input, size * sizeof(float)), "Failed to allocate d_input.");
+    checkCudaError(cudaMalloc(&d_output, size * sizeof(float)), "Failed to allocate d_output.");
+    checkCudaError(cudaMemcpy(d_input, h_input, size * sizeof(float), cudaMemcpyHostToDevice),
+                   "Failed to copy d_input to device.");
+
+    int blocksPerGrid = (size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    geluKernel<<<blocksPerGrid, THREADS_PER_BLOCK>>>(d_input, d_output, size);
+    checkCudaError(cudaGetLastError(), "Kernel launch failed.");
+    checkCudaError(cudaMemcpy(h_output, d_output, size * sizeof(float), cudaMemcpyDeviceToHost),
+                   "Failed to copy d_output to host.");
+
+    cudaFree(d_input);
+    cudaFree(d_output);
+}
+
+void geluForward_wrapper(float *h_input, float *h_output, float _, int size) {
+    geluForward(h_input, h_output, size);
+}
+
+void geluBackward(float *h_input, float *h_grad_output, float *h_grad_input, int size) {
+    float *d_input, *d_grad_output, *d_grad_input;
+
+    checkCudaError(cudaMalloc(&d_input, size * sizeof(float)), "Failed to allocate d_input.");
+    checkCudaError(cudaMalloc(&d_grad_output, size * sizeof(float)), "Failed to allocate d_grad_output.");
+    checkCudaError(cudaMalloc(&d_grad_input, size * sizeof(float)), "Failed to allocate d_grad_input.");
+    checkCudaError(cudaMemcpy(d_input, h_input, size * sizeof(float), cudaMemcpyHostToDevice),
+                   "Failed to copy d_input to device.");
+    checkCudaError(cudaMemcpy(d_grad_output, h_grad_output, size * sizeof(float), cudaMemcpyHostToDevice),
+                   "Failed to copy d_grad_output to device.");
+
+    int blocksPerGrid = (size + THREADS_PER_BLOCK - 1) / THREADS_PER_BLOCK;
+    geluBackwardKernel<<<blocksPerGrid, THREADS_PER_BLOCK>>>(d_input, d_grad_output, d_grad_input, size);
+    checkCudaError(cudaGetLastError(), "Backward Kernel launch failed.");
+    checkCudaError(cudaMemcpy(h_grad_input, d_grad_input, size * sizeof(float), cudaMemcpyDeviceToHost),
+                   "Failed to copy d_grad_input to host.");
+
+    cudaFree(d_input);
+    cudaFree(d_grad_output);
+    cudaFree(d_grad_input);
+}
+
+void geluBackward_wrapper(float *h_input, float *h_grad_output, float *h_grad_input, float _, int size) {
+    geluBackward(h_input, h_grad_output, h_grad_input, size);
+}
+
 int main() {
     std::cout << "Activation Kernel Checks Start." << std::endl;
     std::cout << "========================" << std::endl;
@@ -400,6 +448,10 @@ int main() {
     std::cout << "------------------------" << std::endl;
 
     test_activation_kernel("Tanh", tanh_forward_wrapper, tanh_backward_wrapper, 0.0f, TEST_SIZE);
+
+    std::cout << "------------------------" << std::endl;
+
+    test_activation_kernel("GELU", geluForward_wrapper, geluBackward_wrapper, 0.0f, TEST_SIZE);
 
     std::cout << "------------------------" << std::endl;
 
