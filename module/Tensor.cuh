@@ -1,70 +1,46 @@
-// module/Tensor.cuh
+// module/Tensor.h (C-style, no STL)
 #ifndef TENSOR_H
 #define TENSOR_H
 
-#include <algorithm>
-#include <functional>
-#include <memory>
-#include <vector>
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-class Tensor;
+#include "float_precision.h"
+
+typedef struct Tensor Tensor;
+typedef struct Dependency Dependency;
+
+typedef void (*BackwardFn)(Tensor *target_tensor, Tensor *grad_output);
 
 struct Dependency {
-    std::shared_ptr<Tensor> tensor;
-    std::function<void(const float *grad_out)> backward_fn;
-
-    Dependency(std::shared_ptr<Tensor> t, std::function<void(const float *)> fn)
-        : tensor(std::move(t)), backward_fn(std::move(fn)) {
-    }
+    Tensor *tensor;
+    Tensor *from_output;          // out
+    BackwardFn backward_fn;
 };
 
-class Tensor : public std::enable_shared_from_this<Tensor> {
-  public:
-    float *data;
-    float *grad;
-    int batch_size, features;
-    bool requires_grad;
-    std::vector<Dependency> dependencies;
+struct Tensor {
+    float_t *data;
+    float_t *grad;
+    int batch_size;
+    int features;
+    int requires_grad;
 
-    Tensor(int batch, int feat, bool requires_grad = false)
-        : batch_size(batch), features(feat), requires_grad(requires_grad) {
-        data = new float[batch * feat]();
-        grad = requires_grad ? new float[batch * feat]() : nullptr;
-    }
-
-    // 外部指標版
-    Tensor(float *external_data, int batch, int feat)
-        : data(external_data), batch_size(batch), features(feat), requires_grad(false), grad(nullptr) {
-    }
-
-    int size() const {
-        return batch_size * features;
-    }
-
-    void zero_grad() {
-        if (requires_grad && grad) {
-            std::fill(grad, grad + size(), 0.0f);
-        }
-    }
-
-    void backward() {
-        if (!requires_grad)
-            return;
-        std::fill(grad, grad + size(), 1.0f);
-        for (auto &dep : dependencies) {
-            dep.backward_fn(grad);
-        }
-    }
-
-    std::shared_ptr<Tensor> shared() {
-        return shared_from_this();
-    }
-
-    ~Tensor() {
-        delete[] data;
-        if (grad)
-            delete[] grad;
-    }
+    Dependency *deps;
+    int num_deps;
 };
+
+Tensor *tensor_create(int batch, int feat, int requires_grad);
+Tensor *tensor_from_data(float *external_data, int batch, int feat);
+void tensor_zero_grad(Tensor *t);
+void tensor_add_dependency(Tensor *t, Tensor *dep_tensor, BackwardFn fn);
+void tensor_backward(Tensor *t);
+void tensor_free(Tensor *t);
+void tensor_print(Tensor *t);
+void tensor_print_grad(Tensor *t);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif // TENSOR_H

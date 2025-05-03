@@ -1,6 +1,7 @@
 #include "CudaKernels.cuh"
 #include "Linear.cuh"
 #include "Tensor.cuh"
+#include "TensorOps.cuh"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
@@ -33,66 +34,32 @@ Linear::Linear(int in_f, int out_f) : in_features(in_f), out_features(out_f) {
     free(h_bias);
 }
 
-std::shared_ptr<Tensor> Linear::forward(std::shared_ptr<Tensor> input) {
-    auto output = std::make_shared<Tensor>(input->batch_size, out_features);
+// std::shared_ptr<Tensor> Linear::forward(std::shared_ptr<Tensor> input) {
+//     int batch = input->batch_size;
+//     int in_feat = this->in_features;
+//     int out_feat = this->out_features;
 
-    float *d_input;
-    float *d_output;
-    cudaMalloc(&d_input, input->size() * sizeof(float));
-    cudaMalloc(&d_output, input->batch_size * out_features * sizeof(float));
+//     // 呼叫 matmul kernel 並返回 CPU tensor
+//     Tensor *raw_output = tensor_matmul(input.get(), NULL, d_weight, d_bias);  // NULL: b 是 GPU 常數權重，不是 Tensor
 
-    cudaMemcpy(d_input, input->data, input->size() * sizeof(float), cudaMemcpyHostToDevice);
+//     std::shared_ptr<Tensor> output(raw_output);
 
-    dim3 blockSize(BLOCK_SIZE, BLOCK_SIZE);
-    dim3 gridSize((out_features + BLOCK_SIZE - 1) / BLOCK_SIZE, (input->batch_size + BLOCK_SIZE - 1) / BLOCK_SIZE);
+//     // 建立 backward dependency（若支援）
+//     if (input->requires_grad) {
+//         tensor_add_dependency(output.get(), input.get(), /*Linear backward fn (未定義)*/ NULL);
+//     }
 
-    matrixMultiplyKernel<<<gridSize, blockSize>>>(
-        d_input, d_weight, d_output, input->batch_size, in_features, out_features);
-    addBiasKernel<<<gridSize, blockSize>>>(d_output, d_bias, input->batch_size, out_features);
+//     return output;
+// }
 
-    cudaMemcpy(output->data, d_output, input->batch_size * out_features * sizeof(float), cudaMemcpyDeviceToHost);
+// std::shared_ptr<Tensor> Linear::backward(std::shared_ptr<Tensor> input, std::shared_ptr<Tensor> grad_output) {
+//     Tensor *grad_input = tensor_matmul_backward(
+//         input.get(), grad_output.get(),
+//         d_weight, d_grad_weight, d_grad_bias,
+//         in_features, out_features);
 
-    cudaFree(d_input);
-    cudaFree(d_output);
-
-    return output;
-}
-
-std::shared_ptr<Tensor> Linear::backward(std::shared_ptr<Tensor> input, std::shared_ptr<Tensor> grad_output) {
-    float *d_input, *d_grad_output, *d_grad_input;
-
-    cudaMalloc(&d_input, input->size() * sizeof(float));
-    cudaMalloc(&d_grad_output, grad_output->size() * sizeof(float));
-    cudaMalloc(&d_grad_input, input->size() * sizeof(float));
-
-    cudaMemcpy(d_input, input->data, input->size() * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_grad_output, grad_output->data, grad_output->size() * sizeof(float), cudaMemcpyHostToDevice);
-
-    // grad_weight
-    dim3 blockSize(BLOCK_SIZE, BLOCK_SIZE);
-    dim3 gridSizeW((out_features + BLOCK_SIZE - 1) / BLOCK_SIZE, (in_features + BLOCK_SIZE - 1) / BLOCK_SIZE);
-    matrixMultiplyKernel<<<gridSizeW, blockSize>>>(
-        d_grad_output, d_input, d_grad_weight, out_features, input->batch_size, in_features);
-
-    // grad_bias
-    int threads = 256;
-    int blocks = (out_features + threads - 1) / threads;
-    biasGradientKernel<<<blocks, threads>>>(d_grad_output, d_grad_bias, input->batch_size, out_features);
-
-    // grad_input
-    dim3 gridSizeInput((in_features + BLOCK_SIZE - 1) / BLOCK_SIZE, (input->batch_size + BLOCK_SIZE - 1) / BLOCK_SIZE);
-    matrixMultiplyKernel<<<gridSizeInput, blockSize>>>(
-        d_grad_output, d_weight, d_grad_input, input->batch_size, out_features, in_features);
-
-    auto grad_input = std::make_shared<Tensor>(input->batch_size, in_features);
-    cudaMemcpy(grad_input->data, d_grad_input, grad_input->size() * sizeof(float), cudaMemcpyDeviceToHost);
-
-    cudaFree(d_input);
-    cudaFree(d_grad_output);
-    cudaFree(d_grad_input);
-
-    return grad_input;
-}
+//     return std::shared_ptr<Tensor>(grad_input);
+// }
 
 Linear::~Linear() {
     cudaFree(d_weight);
