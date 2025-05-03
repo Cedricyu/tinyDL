@@ -1,4 +1,7 @@
+#include "CudaKernels.cuh"
 #include "TensorOps.cuh"
+
+#include <cuda_runtime.h>
 
 Tensor *tensor_create(int batch, int feat, int requires_grad) {
     Tensor *t = (Tensor *)malloc(sizeof(Tensor));
@@ -163,21 +166,15 @@ void tensor_backward(Tensor *self) {
     if (!self->requires_grad)
         return;
 
-    // 如果 grad 尚未設置，設為全 1
     if (!self->grad) {
         self->grad = (float *)calloc(self->batch_size * self->features, sizeof(float));
     }
 
-    int total = self->batch_size * self->features;
-    for (int i = 0; i < total; ++i) {
-        self->grad[i] = 1.0f;
-    }
-
-    // 對每個 dependency 呼叫它的 backward_fn
     for (int i = 0; i < self->num_deps; ++i) {
         Dependency *dep = &self->deps[i];
         if (dep->backward_fn) {
-            dep->backward_fn(dep->tensor, self); // 傳 input 和 output
+            dep->backward_fn(dep->tensor, self); // 呼叫該層的 backward
+            tensor_backward(dep->tensor);            // 遞迴往更前面走
         }
     }
 }
@@ -194,6 +191,63 @@ void tensor_print(Tensor *t) {
     printf("\n");
 }
 
+void tensor_add_bias_backward(Tensor *bias, Tensor *grad_out) {
+    int batch = grad_out->batch_size;
+    int feat = grad_out->features;
+
+    if (!bias->grad)
+        bias->grad = (float *)calloc(1 * feat, sizeof(float));
+
+    float *d_grad_out, *d_grad_bias;
+    cudaMalloc(&d_grad_out, batch * feat * sizeof(float));
+    cudaMalloc(&d_grad_bias, feat * sizeof(float));
+
+    cudaMemcpy(d_grad_out, grad_out->grad, batch * feat * sizeof(float), cudaMemcpyHostToDevice);
+
+    int blockSize = 256;
+    int gridSize = (feat + blockSize - 1) / blockSize;
+
+    biasGradientKernel<<<gridSize, blockSize>>>(d_grad_out, d_grad_bias, batch, feat);
+
+    cudaMemcpy(bias->grad, d_grad_bias, feat * sizeof(float), cudaMemcpyDeviceToHost);
+
+    cudaFree(d_grad_out);
+    cudaFree(d_grad_bias);
+}
+
+Tensor *tensor_add_bias(Tensor *x, Tensor *bias) {
+    if (bias->batch_size != 1 || bias->features != x->features) {
+        printf("Bias shape must be (1, features)\n");
+        return NULL;
+    }
+
+    Tensor *out = tensor_create(x->batch_size, x->features, x->requires_grad || bias->requires_grad);
+    memcpy(out->data, x->data, x->batch_size * x->features * sizeof(float));
+
+    // Launch addBiasKernel
+    float *d_out, *d_bias;
+    cudaMalloc(&d_out, out->batch_size * out->features * sizeof(float));
+    cudaMalloc(&d_bias, out->features * sizeof(float));
+
+    cudaMemcpy(d_out, out->data, out->batch_size * out->features * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_bias, bias->data, out->features * sizeof(float), cudaMemcpyHostToDevice);
+
+    dim3 blockDim(16, 16);
+    dim3 gridDim((out->features + 15) / 16, (out->batch_size + 15) / 16);
+    addBiasKernel<<<gridDim, blockDim>>>(d_out, d_bias, out->batch_size, out->features);
+
+    cudaMemcpy(out->data, d_out, out->batch_size * out->features * sizeof(float), cudaMemcpyDeviceToHost);
+
+    cudaFree(d_out);
+    cudaFree(d_bias);
+
+    // Register dependencies
+    if (bias->requires_grad)
+        tensor_add_dependency(out, bias, tensor_add_bias_backward);
+
+    return out;
+}
+
 void tensor_print_grad(Tensor *t) {
     if (!t) {
         printf("Tensor is NULL\n");
@@ -204,4 +258,18 @@ void tensor_print_grad(Tensor *t) {
         printf("%f ", t->grad[i]);
     }
     printf("\n");
+}
+
+void fill_tensor_with_random(Tensor *t) {
+    FILE *fp = fopen("/dev/urandom", "rb");
+    if (!fp) {
+        perror("fopen");
+        exit(1);
+    }
+    for (int i = 0; i < t->batch_size * t->features; i++) {
+        u_int32_t rand_int;
+        fread(&rand_int, sizeof(rand_int), 1, fp);
+        t->data[i] = (rand_int / (double)UINT32_MAX);
+    }
+    fclose(fp);
 }

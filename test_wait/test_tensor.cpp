@@ -20,7 +20,7 @@ void fill_random(Tensor *t) {
     fclose(fp);
 }
 
-int main() {
+void test_tensor() {
     srand((unsigned int)time(NULL));
 
     int M = 2, K = 3, N = 4;  // x: M×K, y: K×N
@@ -53,5 +53,5 @@ int main() {
     tensor_free(y);
     tensor_free(z);
 
-    return 0;
+    return ;
 }

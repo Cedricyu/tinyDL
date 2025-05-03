@@ -26,9 +26,9 @@ TOOL_CPP_OBJ= $(patsubst $(TOOL_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(TOOL_CPP_SRC))
 TOOL_OBJ    = $(TOOL_CPP_OBJ) $(TOOL_CU_OBJ)
 
 # === Testing control ===
-TEST_NAME   ?= test_activation
-TEST_SRC    = $(TEST_DIR)/$(TEST_NAME).cu
-TEST_OBJ    = $(OBJ_DIR)/$(TEST_NAME).o
+TEST_NAME   ?= test_main
+TEST_CPP_SRC = $(wildcard $(TEST_DIR)/*.cpp)
+TEST_OBJ     = $(patsubst $(TEST_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(TEST_CPP_SRC))
 EXEC        = $(TEST_NAME)
 
 # === Targets ===
@@ -53,8 +53,12 @@ $(OBJ_DIR)/%.o: $(TOOL_DIR)/%.cpp | $(OBJ_DIR)
 $(OBJ_DIR)/%.o: $(TOOL_DIR)/%.cu | $(OBJ_DIR)
 	$(NVCC) $(NVCCFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/%.o: $(TEST_DIR)/%.cu | $(OBJ_DIR)
-	$(NVCC) $(CXXFLAGS) -c $< -o $@
+$(EXEC): $(MODULE_OBJ) $(OPT_OBJ) $(TOOL_OBJ) $(TEST_OBJ)
+	$(NVCC) -o $@ $^
+
+$(OBJ_DIR)/%.o: $(TEST_DIR)/%.cpp | $(OBJ_DIR)
+	$(CXX) $(CXXFLAGS) -c $< -o $@
+
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
