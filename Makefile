@@ -14,17 +14,20 @@ OBJ_DIR     = build
 # === Sources ===
 MODULE_SRC  = $(wildcard $(MODULE_DIR)/*.cu)
 OPT_SRC     = $(wildcard $(OPT_DIR)/*.cu)
-TOOL_SRC    = $(wildcard $(TOOL_DIR)/*.cpp)
-ALL_TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp)
+TOOL_CPP_SRC= $(wildcard $(TOOL_DIR)/*.cpp)
+TOOL_CU_SRC = $(wildcard $(TOOL_DIR)/*.cu)
+ALL_TEST_SRC = $(wildcard $(TEST_DIR)/*.cpp $(TEST_DIR)/*.cu)
 
 # === Objects ===
 MODULE_OBJ  = $(patsubst $(MODULE_DIR)/%.cu, $(OBJ_DIR)/%.o, $(MODULE_SRC))
 OPT_OBJ     = $(patsubst $(OPT_DIR)/%.cu, $(OBJ_DIR)/%.o, $(OPT_SRC))
-TOOL_OBJ    = $(patsubst $(TOOL_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(TOOL_SRC))
+TOOL_CU_OBJ = $(patsubst $(TOOL_DIR)/%.cu, $(OBJ_DIR)/%.o, $(TOOL_CU_SRC))
+TOOL_CPP_OBJ= $(patsubst $(TOOL_DIR)/%.cpp, $(OBJ_DIR)/%.o, $(TOOL_CPP_SRC))
+TOOL_OBJ    = $(TOOL_CPP_OBJ) $(TOOL_CU_OBJ)
 
 # === Testing control ===
-TEST_NAME   ?= test_tensor
-TEST_SRC    = $(TEST_DIR)/$(TEST_NAME).cpp
+TEST_NAME   ?= test_activation
+TEST_SRC    = $(TEST_DIR)/$(TEST_NAME).cu
 TEST_OBJ    = $(OBJ_DIR)/$(TEST_NAME).o
 EXEC        = $(TEST_NAME)
 
@@ -47,7 +50,10 @@ $(OBJ_DIR)/%.o: $(OPT_DIR)/%.cu | $(OBJ_DIR)
 $(OBJ_DIR)/%.o: $(TOOL_DIR)/%.cpp | $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(OBJ_DIR)/%.o: $(TEST_DIR)/%.cpp | $(OBJ_DIR)
+$(OBJ_DIR)/%.o: $(TOOL_DIR)/%.cu | $(OBJ_DIR)
+	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/%.o: $(TEST_DIR)/%.cu | $(OBJ_DIR)
 	$(NVCC) $(CXXFLAGS) -c $< -o $@
 
 $(OBJ_DIR):
@@ -56,6 +62,10 @@ $(OBJ_DIR):
 # === Run test
 test: $(EXEC)
 	./$(EXEC)
+
+# === Format
+format: 
+	clang-format -i $(MODULE_SRC) $(OPT_SRC) $(TOOL_CPP_SRC) $(TOOL_CU_SRC) $(ALL_TEST_SRC)
 
 # === Clean
 clean:
