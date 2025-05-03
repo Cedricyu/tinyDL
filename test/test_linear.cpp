@@ -1,7 +1,8 @@
 #include "Linear.cuh"
-#include <cassert>
-#include <iostream>
-#include <vector>
+#include "Tensor.cuh"
+#include "TensorOps.cuh"
+#include <stdio.h>
+#include "test.h"
 
 void test_linear() {
     const int batch_size = 2;
@@ -9,30 +10,37 @@ void test_linear() {
     const int hidden_features = 5;
     const int out_features = 3;
 
-    std::vector<float> input = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f, 6.0f, 7.0f, 8.0f}; // shape: 2 x 4
+    // 建立輸入 Tensor 並初始化資料
+    Tensor *x = tensor_create(batch_size, in_features, 1);  // requires_grad = 1
+    fill_tensor_with_random(x);
 
-    std::vector<float> hidden_output(batch_size * hidden_features);
-    std::vector<float> final_output(batch_size * out_features);
+    tensor_print(x);
 
-    Linear linear1(in_features, hidden_features);
-    Linear linear2(hidden_features, out_features);
+    Linear linear1 = Linear(in_features, hidden_features);
+    Linear linear2 = Linear(hidden_features, out_features);    
 
-    // Forward
-    linear1.forward(input.data(), hidden_output.data(), batch_size);
-    linear2.forward(hidden_output.data(), final_output.data(), batch_size);
+    linear1.print_weight("linear1");
+    linear2.print_weight("linear2");
 
-    std::cout << "Final Output:" << std::endl;
-    for (int i = 0; i < batch_size; ++i) {
-        for (int j = 0; j < out_features; ++j) {
-            std::cout << final_output[i * out_features + j] << " ";
-        }
-        std::cout << std::endl;
+    // 前向傳遞
+    Tensor *h = linear1.forward(x);   // h = x @ W1 + b1
+    Tensor *y = linear2.forward(h);   // y = h @ W2 + b2
+
+    printf("Final Output:\n");
+    for (int i = 0; i < batch_size * out_features; ++i) {
+        printf("%f ", y->data[i]);
     }
+    printf("\n");
 
-    std::vector<float> grad_output = {1.0f, 0.5f, -1.0f, -0.5f, 2.0f, 0.0f}; // shape: 2 x 3
+    // 模擬 output 的梯度 (手動設置 dL/dy)
+    y->requires_grad = 1;
+    y->grad = (float *)calloc(batch_size * out_features, sizeof(float));
+    memcpy(y->grad, y->data, sizeof(float) * y->batch_size * y->features);
+    tensor_backward(y);  // 自動反傳至 linear2, linear1, x
 
-    linear2.backward(hidden_output.data(), grad_output.data(), batch_size);
-    linear1.backward(input.data(), hidden_output.data(), batch_size);
+    linear2.print_grad("linear2");
+    linear1.print_grad("linear1");
 
-    std::cout << "Backward pass done for 2-layer network." << std::endl;
+    printf("\n");
+
 }

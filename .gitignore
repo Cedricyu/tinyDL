@@ -41,3 +41,5 @@
 
 # Pre-Trained Checkpoints
 /.pretrained_checkpoints/
+
+./test/test_main.cpp
