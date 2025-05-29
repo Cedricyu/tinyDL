@@ -32,15 +32,16 @@ void test_linear() {
     }
     printf("\n");
 
-    // 模擬 output 的梯度 (手動設置 dL/dy)
-    y->requires_grad = 1;
-    y->grad = (float *)calloc(batch_size * out_features, sizeof(float));
-    memcpy(y->grad, y->data, sizeof(float) * y->batch_size * y->features);
-    tensor_backward(y);  // 自動反傳至 linear2, linear1, x
+    Tensor *grad = tensor_clone(y);  // 複製 y 的梯度
+    tensor_backward(y, grad);  // 自動反傳至 linear2, linear1, x
 
     linear2.print_grad("linear2");
     linear1.print_grad("linear1");
 
     printf("\n");
+
+    // 在 tensor_backward 或 test_main 中呼叫
+    printf("=== Dependency Graph ===\n");
+    tensor_print_graph_dot(y);
 
 }
