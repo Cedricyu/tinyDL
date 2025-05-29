@@ -35,7 +35,6 @@ void tensor_zero_grad(Tensor *t) {
 void tensor_add_dependency(Tensor *t, Tensor *dep_tensor, BackwardFn fn) {
     t->deps = (Dependency *)realloc(t->deps, sizeof(Dependency) * (t->num_deps + 1));
     t->deps[t->num_deps].tensor = dep_tensor;
-    t->deps[t->num_deps].from_output = t;
     t->deps[t->num_deps].backward_fn = fn;
     t->num_deps++;
 }
@@ -95,87 +94,132 @@ Tensor *tensor_matmul(Tensor *a, Tensor *b) {
     return out;
 }
 
-void tensor_matmul_backward_a(Tensor *a, Tensor *grad_out) {
-
-    Tensor *out = grad_out;
-    Tensor *b = out->deps[1].tensor;
-
+Tensor *tensor_matmul_backward_a(Tensor *a, Tensor *b, Tensor *grad_out) {
     int M = a->batch_size;
     int K = a->features;
     int N = b->features;
-    if (!a->grad)
-        a->grad = (float *)calloc(M * K, sizeof(float));
 
+    Tensor *grad_a = tensor_create(M, K, 0);  // 新建 Tensor 儲存梯度
+
+    // GPU 記憶體配置
     float *d_grad_out, *d_b, *d_grad_a;
     cudaMalloc(&d_grad_out, M * N * sizeof(float));
     cudaMalloc(&d_b, K * N * sizeof(float));
     cudaMalloc(&d_grad_a, M * K * sizeof(float));
 
-    cudaMemcpy(d_grad_out, out->grad, M * N * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_grad_out, grad_out->data, M * N * sizeof(float), cudaMemcpyHostToDevice);
     cudaMemcpy(d_b, b->data, K * N * sizeof(float), cudaMemcpyHostToDevice);
 
-    dim3 blockSize(16, 16);
-    dim3 grid((K + 15) / 16, (M + 15) / 16);
-    matrixTransposeMulKernel<<<grid, blockSize>>>(d_grad_out, d_b, d_grad_a, M, N, K);
+    // GPU: 轉置 b 並相乘
+    float *d_b_T;
+    cudaMalloc(&d_b_T, N * K * sizeof(float));
+    dim3 blockDim(16, 16);
+    dim3 gridDim((K + 15) / 16, (N + 15) / 16);
+    matrixTransposeKernel<<<gridDim, blockDim>>>(d_b, d_b_T, K, N);
+    cudaDeviceSynchronize();
 
-    float *h_grad_a = (float *)malloc(M * K * sizeof(float));
-    cudaMemcpy(h_grad_a, d_grad_a, M * K * sizeof(float), cudaMemcpyDeviceToHost);
-    for (int i = 0; i < M * K; i++)
-        a->grad[i] += h_grad_a[i];
-    free(h_grad_a);
+    gridDim = dim3((K + 15) / 16, (M + 15) / 16);
+    matrixMultiplyKernel<<<gridDim, blockDim>>>(d_grad_out, d_b_T, d_grad_a, M, N, K);
+    cudaDeviceSynchronize();
+
+    cudaMemcpy(grad_a->data, d_grad_a, M * K * sizeof(float), cudaMemcpyDeviceToHost);
+
     cudaFree(d_grad_out);
     cudaFree(d_b);
+    cudaFree(d_b_T);
     cudaFree(d_grad_a);
+
+    return grad_a;
 }
 
-void tensor_matmul_backward_b(Tensor *b, Tensor *grad_out) {
-
-    Tensor *out = grad_out;
-    Tensor *a = out->deps[0].tensor;
-
+Tensor *tensor_matmul_backward_b(Tensor *a, Tensor *b, Tensor *grad_out) {
     int M = a->batch_size;
     int K = a->features;
     int N = b->features;
-    if (!b->grad)
-        b->grad = (float *)calloc(K * N, sizeof(float));
 
-    float *d_a, *d_grad_out, *d_grad_b;
+    Tensor *grad_b = tensor_create(K, N, 0);  // 新建 Tensor 儲存梯度
+
+    float *d_a, *d_a_T, *d_grad_out, *d_grad_b;
     cudaMalloc(&d_a, M * K * sizeof(float));
+    cudaMalloc(&d_a_T, K * M * sizeof(float));
     cudaMalloc(&d_grad_out, M * N * sizeof(float));
     cudaMalloc(&d_grad_b, K * N * sizeof(float));
 
     cudaMemcpy(d_a, a->data, M * K * sizeof(float), cudaMemcpyHostToDevice);
-    cudaMemcpy(d_grad_out, out->grad, M * N * sizeof(float), cudaMemcpyHostToDevice);
+    cudaMemcpy(d_grad_out, grad_out->data, M * N * sizeof(float), cudaMemcpyHostToDevice);
 
-    dim3 blockSize(16, 16);
-    dim3 grid((N + 15) / 16, (K + 15) / 16);
-    matrixTransposeMulKernel<<<grid, blockSize>>>(d_a, d_grad_out, d_grad_b, K, M, N);
+    dim3 blockDim(16, 16);
+    dim3 gridDim((M + 15) / 16, (K + 15) / 16);
+    matrixTransposeKernel<<<gridDim, blockDim>>>(d_a, d_a_T, M, K);
+    cudaDeviceSynchronize();
 
-    float *h_grad_b = (float *)malloc(K * N * sizeof(float));
-    cudaMemcpy(h_grad_b, d_grad_b, K * N * sizeof(float), cudaMemcpyDeviceToHost);
+    gridDim = dim3((N + 15) / 16, (K + 15) / 16);
+    matrixMultiplyKernel<<<gridDim, blockDim>>>(d_a_T, d_grad_out, d_grad_b, K, M, N);
+    cudaDeviceSynchronize();
 
-    for (int i = 0; i < K * N; i++)
-        b->grad[i] += h_grad_b[i];
-    free(h_grad_b);
+    cudaMemcpy(grad_b->data, d_grad_b, K * N * sizeof(float), cudaMemcpyDeviceToHost);
+
     cudaFree(d_a);
+    cudaFree(d_a_T);
     cudaFree(d_grad_out);
     cudaFree(d_grad_b);
+
+    return grad_b;
 }
 
-void tensor_backward(Tensor *self) {
+
+void tensor_backward(Tensor *self, Tensor *grad_out) {
     if (!self->requires_grad)
         return;
 
-    if (!self->grad) {
-        self->grad = (float *)calloc(self->batch_size * self->features, sizeof(float));
+    if (self->num_deps != 2) {
+        printf("Not enough dependencies found for tensor backward.\n");
+        return;
     }
+    Dependency *dep0 = &self->deps[0];
+    Dependency *dep1 = &self->deps[1];
+    if (dep0->backward_fn) {
+        Tensor *grad_a = dep0->backward_fn(dep0->tensor, dep1->tensor, grad_out);
+        tensor_grad(dep0->tensor, grad_a);
+        tensor_backward(dep0->tensor, grad_a); 
+        tensor_free(grad_a);
+    }
+    if (dep1 && dep1->backward_fn) {
+        Tensor *grad_b = dep1->backward_fn(dep0->tensor, dep1->tensor, grad_out);
+        tensor_grad(dep1->tensor, grad_b); 
+        tensor_free(grad_b);
+    }
+}
 
+void tensor_print_graph_dot_rec(Tensor *self) {
+    if (!self) return;
+
+    printf("  \"%p\" [label=\"Tensor %p\"];\n", self, self);
     for (int i = 0; i < self->num_deps; ++i) {
         Dependency *dep = &self->deps[i];
-        if (dep->backward_fn) {
-            dep->backward_fn(dep->tensor, self); // 呼叫該層的 backward
-            tensor_backward(dep->tensor);            // 遞迴往更前面走
+        if (dep && dep->tensor) {
+            printf("  \"%p\" -> \"%p\";\n", self, dep->tensor);
+            tensor_print_graph_dot_rec(dep->tensor);
         }
+    }
+}
+
+void tensor_print_graph_dot(Tensor *self) {
+    printf("digraph G {\n");
+    tensor_print_graph_dot_rec(self);
+    printf("}\n");
+}
+
+void tensor_grad(Tensor *t, Tensor *grad) {
+    if (!t->requires_grad) {
+        printf("Tensor does not require gradient.\n");
+        return;
+    }
+    if (!t->grad) {
+        t->grad = (float *)calloc(t->batch_size * t->features, sizeof(float));
+    }
+    for (int i = 0; i < t->batch_size * t->features; ++i) {
+        t->grad[i] += grad->data[i]; // 假設 grad 是一個 Tensor，包含梯度數據
     }
 }
 
@@ -191,7 +235,7 @@ void tensor_print(Tensor *t) {
     printf("\n");
 }
 
-void tensor_add_bias_backward(Tensor *bias, Tensor *grad_out) {
+Tensor tensor_add_bias_backward(Tensor *a, Tensor *bias, Tensor *grad_out) {
     int batch = grad_out->batch_size;
     int feat = grad_out->features;
 
@@ -242,8 +286,8 @@ Tensor *tensor_add_bias(Tensor *x, Tensor *bias) {
     cudaFree(d_bias);
 
     // Register dependencies
-    if (bias->requires_grad)
-        tensor_add_dependency(out, bias, tensor_add_bias_backward);
+    // if (bias->requires_grad)
+    //     tensor_add_dependency(out, bias, tensor_add_bias_backward);
 
     return out;
 }
@@ -272,4 +316,15 @@ void fill_tensor_with_random(Tensor *t) {
         t->data[i] = (rand_int / (double)UINT32_MAX);
     }
     fclose(fp);
+}
+
+Tensor *tensor_clone(Tensor *t) {
+    Tensor *clone = (Tensor *)malloc(sizeof(Tensor));
+    clone->batch_size = t->batch_size;
+    clone->features = t->features;
+    clone->requires_grad = t->requires_grad;
+    clone->data = (float *)malloc(t->batch_size * t->features * sizeof(float));
+    clone->grad = t->requires_grad ? (float *)malloc(t->batch_size * t->features * sizeof(float)) : NULL;
+    memcpy(clone->data, t->data, t->batch_size * t->features * sizeof(float));
+    return clone;
 }

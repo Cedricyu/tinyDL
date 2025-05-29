@@ -56,17 +56,13 @@ __global__ void biasGradientKernel(float *grad_output, float *grad_bias, int bat
     grad_bias[idx] = sum;
 }
 
-__global__ void matrixTransposeMulKernel(float *A, float *B, float *C, int M, int N, int K) {
-    int row = blockIdx.y * blockDim.y + threadIdx.y; // over N (Aᵗ 的 row)
-    int col = blockIdx.x * blockDim.x + threadIdx.x; // over K (B 的 col)
+__global__ void matrixTransposeKernel(float *input, float *output, int rows, int cols) {
+    int x = blockIdx.x * blockDim.x + threadIdx.x;  // column index
+    int y = blockIdx.y * blockDim.y + threadIdx.y;  // row index
 
-    if (row < N && col < K) {
-        float sum = 0.0f;
-        for (int i = 0; i < M; ++i) {
-            float a = A[i * N + row]; // Aᵗ[row, i] = A[i, row]
-            float b = B[i * K + col]; // B[i, col]
-            sum += a * b;
-        }
-        C[row * K + col] = sum;
+    if (x < cols && y < rows) {
+        int input_idx = y * cols + x;
+        int output_idx = x * rows + y;
+        output[output_idx] = input[input_idx];
     }
 }
