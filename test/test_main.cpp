@@ -1,10 +1,10 @@
-#include "CudaDeviceInfo.cuh"
-#include "test.h"
-#include <iostream>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <time.h>
+#include <iostream>
+#include "CudaDeviceInfo.cuh"
+#include "test.h"
 
 int main() {
     CudaDeviceInfo::PrintAllDevices();
@@ -12,7 +12,7 @@ int main() {
     std::cout << "Running tests..." << std::endl;
 
     test_linear();
-
+    // test_conv2d();
     // 你可以未來加更多：
     // test_relu();
     // test_step();

@@ -1,8 +1,9 @@
 # === Config ===
 NVCC        = nvcc
 CXX         = g++
-CXXFLAGS    = -I./module -I./optimizer -I./tool
+CXXFLAGS    = -I./module -I./optimizer -I./tool -lSDL2
 NVCCFLAGS   = -I./module -I./optimizer -I./tool
+LDFLAGS     = -lSDL2
 
 # === Directories ===
 MODULE_DIR  = module
@@ -37,9 +38,6 @@ EXEC        = $(TEST_NAME)
 all: $(EXEC)
 	@echo "===== Build Complete: $(EXEC) ====="
 
-$(EXEC): $(MODULE_OBJ) $(OPT_OBJ) $(TOOL_OBJ) $(TEST_OBJ)
-	$(NVCC) -o $@ $^
-
 # === Compile rules ===
 $(OBJ_DIR)/%.o: $(MODULE_DIR)/%.cu | $(OBJ_DIR)
 	$(NVCC) $(NVCCFLAGS) -c $< -o $@
@@ -54,7 +52,7 @@ $(OBJ_DIR)/%.o: $(TOOL_DIR)/%.cu | $(OBJ_DIR)
 	$(NVCC) $(NVCCFLAGS) -c $< -o $@
 
 $(EXEC): $(MODULE_OBJ) $(OPT_OBJ) $(TOOL_OBJ) $(TEST_OBJ)
-	$(NVCC) -o $@ $^
+	$(NVCC) -o $@ $^ $(LDFLAGS)
 
 $(OBJ_DIR)/%.o: $(TEST_DIR)/%.cpp | $(OBJ_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@

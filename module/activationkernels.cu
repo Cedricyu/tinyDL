@@ -1,4 +1,4 @@
-#include "ActivationKernels.cuh"
+#include "activationkernels.cuh"
 
 __global__ void sigmoidKernel(float *input, float *output, int size) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;

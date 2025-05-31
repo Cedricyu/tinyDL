@@ -1,9 +1,9 @@
-#include "ActivationKernels.cuh"
-#include "CudaHelper.cuh"
 #include <cuda_runtime.h>
 #include <iostream>
 #include <string>
 #include <vector>
+#include "ActivationKernels.cuh"
+#include "CudaHelper.cuh"
 
 const int THREADS_PER_BLOCK = 256;
 const int TEST_SIZE = 1024;
@@ -16,12 +16,8 @@ const float ELU_ALPHA = 1.0f;
 typedef void (*HostForwardFunc)(float *h_input, float *h_output, float param, int size);
 typedef void (*HostBackwardFunc)(float *h_input, float *h_grad_output, float *h_grad_input, float param, int size);
 
-void test_activation_kernel(const std::string &name,
-                            HostForwardFunc forward_func,
-                            HostBackwardFunc backward_func,
-                            float param,
-                            int size,
-                            int count = PRINT_COUNT) {
+void test_activation_kernel(const std::string &name, HostForwardFunc forward_func, HostBackwardFunc backward_func,
+                            float param, int size, int count = PRINT_COUNT) {
     std::cout << name << " Check: " << std::endl;
 
     float *h_input = new float[size];
@@ -117,9 +113,7 @@ void swish_foward(float *h_input, float *h_output, int size) {
     cudaFree(d_output);
 }
 
-void swish_foward_wrapper(float *h_input, float *h_output, float _, int size) {
-    swish_foward(h_input, h_output, size);
-}
+void swish_foward_wrapper(float *h_input, float *h_output, float _, int size) { swish_foward(h_input, h_output, size); }
 
 void swish_backward_wrapper(float *h_input, float *h_grad_output, float *h_grad_input, float _, int size) {
     float *d_input, *d_grad_output, *d_grad_input;
@@ -161,9 +155,7 @@ void relu_forward(float *h_input, float *h_output, int size) {
     cudaFree(d_output);
 }
 
-void relu_forward_wrapper(float *h_input, float *h_output, float _, int size) {
-    relu_forward(h_input, h_output, size);
-}
+void relu_forward_wrapper(float *h_input, float *h_output, float _, int size) { relu_forward(h_input, h_output, size); }
 
 void relu_backward(float *h_input, float *h_grad_output, float *h_grad_input, int size) {
     float *d_input, *d_grad_output, *d_grad_input;
@@ -341,9 +333,7 @@ void tanh_forward(float *h_input, float *h_output, int size) {
     cudaFree(d_output);
 }
 
-void tanh_forward_wrapper(float *h_input, float *h_output, float _, int size) {
-    tanh_forward(h_input, h_output, size);
-}
+void tanh_forward_wrapper(float *h_input, float *h_output, float _, int size) { tanh_forward(h_input, h_output, size); }
 
 void tanh_backward(float *h_input, float *h_grad_output, float *h_grad_input, int size) {
     float *d_input, *d_grad_output, *d_grad_input;
@@ -389,9 +379,7 @@ void geluForward(float *h_input, float *h_output, int size) {
     cudaFree(d_output);
 }
 
-void geluForward_wrapper(float *h_input, float *h_output, float _, int size) {
-    geluForward(h_input, h_output, size);
-}
+void geluForward_wrapper(float *h_input, float *h_output, float _, int size) { geluForward(h_input, h_output, size); }
 
 void geluBackward(float *h_input, float *h_grad_output, float *h_grad_input, int size) {
     float *d_input, *d_grad_output, *d_grad_input;

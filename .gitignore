@@ -33,6 +33,7 @@
 # Doc Outputs
 **/docs/_build/*
 **/generated/*
+/data/
 
 # Test Outputs
 **/runs/*

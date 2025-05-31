@@ -1,4 +1,4 @@
-#include "CudaKernels.cuh"
+#include "cudakernels.cuh"
 
 __global__ void matrixMultiplyKernel(float *A, float *B, float *C, int M, int N, int K) {
     __shared__ float shared_A[BLOCK_SIZE][BLOCK_SIZE];
@@ -24,14 +24,12 @@ __global__ void matrixMultiplyKernel(float *A, float *B, float *C, int M, int N,
 
         __syncthreads();
 
-        for (int i = 0; i < BLOCK_SIZE; ++i)
-            sum += shared_A[ty][i] * shared_B[i][tx];
+        for (int i = 0; i < BLOCK_SIZE; ++i) sum += shared_A[ty][i] * shared_B[i][tx];
 
         __syncthreads();
     }
 
-    if (row < M && col < K)
-        C[row * K + col] = sum;
+    if (row < M && col < K) C[row * K + col] = sum;
 }
 
 __global__ void addBiasKernel(float *C, float *bias, int M, int N) {
@@ -45,8 +43,7 @@ __global__ void addBiasKernel(float *C, float *bias, int M, int N) {
 
 __global__ void biasGradientKernel(float *grad_output, float *grad_bias, int batch_size, int out_features) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
-    if (idx >= out_features)
-        return;
+    if (idx >= out_features) return;
 
     float sum = 0.0f;
     for (int i = 0; i < batch_size; ++i) {
