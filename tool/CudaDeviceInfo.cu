@@ -1,6 +1,6 @@
-#include "CudaDeviceInfo.cuh"
 #include <cuda_runtime.h>
 #include <iostream>
+#include "CudaDeviceInfo.cuh"
 
 std::vector<DeviceInfo> CudaDeviceInfo::GetAllDevices() {
     std::vector<DeviceInfo> devices;

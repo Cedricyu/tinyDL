@@ -31,6 +31,7 @@ struct Tensor {
 
 Tensor *tensor_create(int batch, int feat, int requires_grad);
 Tensor *tensor_from_data(float *external_data, int batch, int feat);
+Tensor *tensor_flatten(Tensor *t);
 void tensor_zero_grad(Tensor *t);
 void tensor_add_dependency(Tensor *t, Tensor *dep_tensor, BackwardFn fn);
 void tensor_backward(Tensor *t, Tensor *grad_output);
@@ -38,6 +39,7 @@ void tensor_free(Tensor *t);
 void tensor_print(Tensor *t);
 void tensor_print_grad(Tensor *t);
 void tensor_grad(Tensor *t, Tensor *grad);
+void tensor_update(Tensor *t, float lr) ;
 
 #ifdef __cplusplus
 }
