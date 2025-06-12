@@ -13,9 +13,10 @@
 
 void xavier_init(Tensor *t, int fan_in, int fan_out) {
     float limit = std::sqrt(6.0f / (fan_in + fan_out));
-    for (int i = 0; i < t->batch_size * t->features; ++i) {
+    int size = tensor_numel(t->ndim, t->shape);
+    for (int i = 0; i < size; ++i) {
         float r = static_cast<float>(std::rand()) / RAND_MAX;  // [0,1]
-        r = r * 2.0f * limit - limit;  // [ -limit, +limit ]
+        r = r * 2.0f * limit - limit;  // [-limit, limit]
         t->data[i] = r;
     }
 }
@@ -24,9 +25,11 @@ Linear::Linear(int in_f, int out_f) {
     in_features = in_f;
     out_features = out_f;
 
-    weight = tensor_create(in_f, out_f, 1);  // (K, N)
-    xavier_init(this->weight, in_features, out_features);        // 新增 Xavier 初始化
-    bias = tensor_create(1, out_f, 1);  // (1, N)
+    int w_shape[] = {in_f, out_f};   // (K, N)
+    int b_shape[] = {1, out_f};      // (1, N)
+    weight = tensor_create(2, w_shape, 1);
+    bias   = tensor_create(2, b_shape, 1);
+    xavier_init(weight, in_f, out_f);
 }
 
 Tensor *Linear::forward(Tensor *input) {

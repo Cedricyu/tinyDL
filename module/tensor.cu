@@ -2,46 +2,52 @@
 #include <stdio.h>
 #include "tensor.cuh"
 
-Tensor *tensor_create(int batch, int feat, int requires_grad) {
+int tensor_numel(int ndim, int *shape) {
+    int total = 1;
+    for (int i = 0; i < ndim; i++) total *= shape[i];
+    return total;
+}
+
+Tensor *tensor_create(int ndim, int *shape, int requires_grad) {
     Tensor *t = (Tensor *)malloc(sizeof(Tensor));
-    t->batch_size = batch;
-    t->features = feat;
+    t->ndim = ndim;
     t->requires_grad = requires_grad;
-    t->data = (float *)calloc(batch * feat, sizeof(float));
-    t->grad = requires_grad ? (float *)calloc(batch * feat, sizeof(float)) : NULL;
+
+    t->shape = (int *)malloc(sizeof(int) * ndim);
+    memcpy(t->shape, shape, sizeof(int) * ndim);
+
+    int total_size = tensor_numel(ndim, shape);
+    t->data = (float_t *)calloc(total_size, sizeof(float_t));
+    t->grad = requires_grad ? (float_t *)calloc(total_size, sizeof(float_t)) : NULL;
+
     t->deps = NULL;
     t->num_deps = 0;
     return t;
 }
 
-Tensor *tensor_from_data(float *external_data, int batch, int feat) {
+Tensor *tensor_from_data(float *external_data, int ndim, int *shape) {
     Tensor *t = (Tensor *)malloc(sizeof(Tensor));
+    t->ndim = ndim;
+    t->shape = (int *)malloc(sizeof(int) * ndim);
+    memcpy(t->shape, shape, sizeof(int) * ndim);
     t->data = external_data;
     t->grad = NULL;
-    t->batch_size = batch;
-    t->features = feat;
     t->requires_grad = 0;
     t->deps = NULL;
     t->num_deps = 0;
     return t;
 }
 
-Tensor *tensor_flatten(Tensor *t) {
-    if (!t) {
-        printf("Tensor is NULL\n");
-        return NULL;
-    }
-    Tensor *out = tensor_create(t->batch_size, t->batch_size * t->features, t->requires_grad);
-    for (int i = 0; i < t->batch_size; ++i) {
-        for (int j = 0; j < t->features; ++j) {
-            out->data[i * out->features + j] = t->data[i * t->features + j];
-        }
-    }
-    return out;
+Tensor *tensor_from_data_2d(float *data, int dim0, int dim1) {
+    int shape[] = {dim0, dim1};
+    return tensor_from_data(data, 2, shape);
 }
 
 void tensor_zero_grad(Tensor *t) {
-    if (t->requires_grad && t->grad) memset(t->grad, 0, sizeof(float) * t->batch_size * t->features);
+    if (t->requires_grad && t->grad) {
+        int total = tensor_numel(t->ndim, t->shape);
+        memset(t->grad, 0, sizeof(float) * total);
+    }
 }
 
 void tensor_add_dependency(Tensor *t, Tensor *dep_tensor, BackwardFn fn) {
@@ -51,30 +57,39 @@ void tensor_add_dependency(Tensor *t, Tensor *dep_tensor, BackwardFn fn) {
     t->num_deps++;
 }
 
-void tensor_free(Tensor *t) {
-    if (!t) return;
-    if (t->grad) free(t->grad);
-    if (t->data) free(t->data);
-}
-
-void tensor_print_dimesions(Tensor *self) {
-    if (!self) {
-        printf("Tensor is NULL\n");
-        return;
-    }
-    printf("Tensor dimensions: batch_size=%d, features=%d\n", self->batch_size, self->features);
-}
-
 void tensor_update(Tensor *t, float lr) {
     if (!t->requires_grad || !t->grad) {
         printf("Tensor has no gradient to update.\n");
         return;
     }
 
-    int size = t->batch_size * t->features;
-    for (int i = 0; i < size; i++) {
+    int total = tensor_numel(t->ndim, t->shape);
+    for (int i = 0; i < total; i++) {
         t->data[i] += lr * t->grad[i];  // 梯度下降
     }
+}
+
+void tensor_free(Tensor *t) {
+    if (!t) return;
+    if (t->grad) free(t->grad);
+    if (t->data) free(t->data);
+    if (t->shape) free(t->shape);
+    if (t->deps) free(t->deps);
+    free(t);
+}
+
+void tensor_print_dimensions(Tensor *t) {
+    if (!t) {
+        printf("Tensor is NULL\n");
+        return;
+    }
+
+    printf("Tensor shape: (");
+    for (int i = 0; i < t->ndim; ++i) {
+        printf("%d", t->shape[i]);
+        if (i != t->ndim - 1) printf(", ");
+    }
+    printf(")\n");
 }
 
 void tensor_print(Tensor *t) {
@@ -82,15 +97,11 @@ void tensor_print(Tensor *t) {
         printf("Tensor is NULL\n");
         return;
     }
-    printf("Tensor data: ");
-    printf("[");
-    for(int i = 0; i < t->batch_size; ++i) {
-        printf("[");
-        for (int j = 0; j < t->features; ++j) {
-            printf("%f ", t->data[i * t->features + j]);
-        }
-        printf("]");
+
+    int total = tensor_numel(t->ndim, t->shape);
+    printf("Tensor data: [");
+    for (int i = 0; i < total; ++i) {
+        printf("%f ", t->data[i]);
     }
-    printf("]");
-    printf("\n");
+    printf("]\n");
 }

@@ -5,6 +5,7 @@
 #include "linear.cuh"
 #include "tensor.cuh"
 #include "tensorops.cuh"
+#include "visualize.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -12,143 +13,174 @@
 #define IMAGE_SIZE (32 * 32 * 3)
 #define RECORD_SIZE (1 + IMAGE_SIZE)
 
-// float *parse_cifar10(const char *filename, int pictureno, int *label_out) {
-//     FILE *file = fopen(filename, "rb");
-//     if (!file) {
-//         printf("Cannot open %s\n", filename);
-//         return NULL;
-//     }
+float *parse_cifar10(const char *filename, int pictureno, int *label_out) {
+    FILE *file = fopen(filename, "rb");
+    if (!file) {
+        printf("Cannot open %s\n", filename);
+        return NULL;
+    }
 
-//     long offset = (long)pictureno * RECORD_SIZE;
-//     if (fseek(file, offset, SEEK_SET) != 0) {
-//         printf("Failed to seek to picture %d\n", pictureno);
-//         fclose(file);
-//         return NULL;
-//     }
+    long offset = (long)pictureno * RECORD_SIZE;
+    if (fseek(file, offset, SEEK_SET) != 0) {
+        printf("Failed to seek to picture %d\n", pictureno);
+        fclose(file);
+        return NULL;
+    }
 
-//     unsigned char buffer[RECORD_SIZE];
-//     if (fread(buffer, 1, RECORD_SIZE, file) != RECORD_SIZE) {
-//         printf("Failed to read picture %d\n", pictureno);
-//         fclose(file);
-//         return NULL;
-//     }
+    unsigned char buffer[RECORD_SIZE];
+    if (fread(buffer, 1, RECORD_SIZE, file) != RECORD_SIZE) {
+        printf("Failed to read picture %d\n", pictureno);
+        fclose(file);
+        return NULL;
+    }
 
-//     unsigned char label = buffer[0];
-//     if (label_out) *label_out = label;
-//     // printf("Picture %d: Label=%d\n", pictureno, label);
-//     unsigned char *r = buffer + 1;
-//     unsigned char *g = buffer + 1 + 32*32;
-//     unsigned char *b = buffer + 1 + 32*32*2;
+    unsigned char label = buffer[0];
+    if (label_out) *label_out = label;
+    // printf("Picture %d: Label=%d\n", pictureno, label);
+    unsigned char *r = buffer + 1;
+    unsigned char *g = buffer + 1 + 32 * 32;
+    unsigned char *b = buffer + 1 + 32 * 32 * 2;
 
-//     static float img_data[IMAGE_SIZE];
-//     for (int i = 0; i < 32 * 32; i++) {
-//         img_data[i*3 + 0] = r[i] / 255.0f;  // R
-//         img_data[i*3 + 1] = g[i] / 255.0f;  // G
-//         img_data[i*3 + 2] = b[i] / 255.0f;  // B
-//     }
+    static float img_data[IMAGE_SIZE];
+    for (int i = 0; i < IMAGE_SIZE; i++) {
+        img_data[i] = buffer[i + 1] / 255.0f;
+    }
 
-//     fclose(file);
-//     return img_data;
-// }
+    fclose(file);
+    return img_data;
+}
 
-// int argmax(float *arr, int size) {
-//     int max_idx = 0;
-//     for (int i = 1; i < size; i++) {
-//         if (arr[i] > arr[max_idx]) {
-//             max_idx = i;
-//         }
-//     }
-//     return max_idx;
-// }
+void save_tensor_channel_as_ppm(Tensor *t, int batch_idx, int channel, int height, int width, const char *filename) {
+    if (t->ndim != 4) {
+        printf("save_tensor_channel_as_ppm only supports 4D tensors.\n");
+        return;
+    }
 
-// // Tensor *cross_entropy_loss(Tensor *logits, Tensor *targets, int num_classes) {
-// //     Tensor *loss = tensor_create(1, 1, 1);  // 標量 Tensor
-// //     loss->data[0] = 0.0f;
+    int B = t->shape[0];
+    int C = t->shape[1];
+    int H = t->shape[2];
+    int W = t->shape[3];
 
-// //     // 計算 softmax
-// //     float softmax_out[10];
-// //     for (int i = 0; i < num_classes; i++)
-// //         softmax_out[i] = logits->data[i];
-// //     softmax(softmax_out, num_classes);
+    if (batch_idx >= B || channel >= C || height != H || width != W) {
+        printf("save_tensor_channel_as_ppm: shape mismatch or out of range.\n");
+        return;
+    }
 
-// //     for (int i = 0; i < num_classes; i++) {
-// //         if (targets->data[i] > 0)
-// //             loss->data[0] -= targets->data[i] * logf(softmax_out[i] + 1e-9f);
-// //     }
+    FILE *f = fopen(filename, "wb");
+    if (!f) {
+        printf("Failed to open file %s\n", filename);
+        return;
+    }
 
-// //     return loss;
-// // }
+    fprintf(f, "P6\n%d %d\n255\n", width, height);
 
-// void create_one_hot(float *target, int label, int num_classes) {
-//     for (int i = 0; i < num_classes; i++) {
-//         target[i] = (i == label) ? 1.0f : 0.0f;
-//     }
-// }
+    int offset = ((batch_idx * C + channel) * H * W);
+    float *data = t->data + offset;
 
-// void softmax(float *logits, float *output, int size) {
-//     float max_logit = logits[0];
-//     for (int i = 1; i < size; i++)
-//         if (logits[i] > max_logit) max_logit = logits[i];
+    float min_val = 1e10f, max_val = -1e10f;
+    for (int i = 0; i < height * width; i++) {
+        float v = data[i];
+        if (v < min_val) min_val = v;
+        if (v > max_val) max_val = v;
+    }
 
-//     float sum_exp = 0.0f;
-//     for (int i = 0; i < size; i++) {
-//         output[i] = expf(logits[i] - max_logit);
-//         sum_exp += output[i];
-//     }
+    float range = max_val - min_val;
+    if (fabs(range) < 1e-6f) range = 1.0f;  // avoid divide by 0
 
-//     for (int i = 0; i < size; i++)
-//         output[i] /= sum_exp;
-// }
+    for (int i = 0; i < height * width; i++) {
+        float norm = (data[i] - min_val) / range;
+        uint8_t pixel = (uint8_t)(norm * 255.0f);
+        fputc(pixel, f);
+        fputc(pixel, f);
+        fputc(pixel, f);  // RGB 灰階輸出
+    }
 
-// void compute_grad_logits(float *logits, float *targets, float *grad_logits, int len) {
-//     float softmax_out[10];
-//     softmax(logits, softmax_out, len);
+    fclose(f);
+}
 
-//     for (int i = 0; i < len; i++) {
-//         grad_logits[i] = softmax_out[i] - targets[i];
-//     }
-// }
+void save_rgb_image_as_ppm(const float *image, int height, int width, const char *filename) {
+    FILE *f = fopen(filename, "wb");
+    if (!f) {
+        printf("Failed to open file %s\n", filename);
+        return;
+    }
 
-// void test_conv2d() {
-//     int label;
+    fprintf(f, "P6\n%d %d\n255\n", width, height);
 
-//     float w_data[] = {
-//         1, 0, -1,
-//         1, 0, -1,
-//         1, 0, -1
-//     };
-//     Tensor *w = tensor_from_data(w_data, 1, 3*3);
-//     w->requires_grad = 1;  // Enable gradient tracking for the weight tensor
-//     Conv2D conv2d = Conv2D(w, 3, 3, 1, 1, 1);
-//     int in_features = 3*3 ,hidden_features = 16, out_features = 10;
-//     Linear linear1 = Linear(in_features, hidden_features);
-//     Linear linear2 = Linear(hidden_features, out_features);
-//     for (int pictureno = 0; pictureno < 5; pictureno++) {
-//         float *image = parse_cifar10("./data/cifar-10-batches-bin/data_batch_1.bin", pictureno, &label);
-//         if (!image) break;
+    // CIFAR-10 排列：前1024為R，接著G，再來B
+    const float *r = image;
+    const float *g = image + width * height;
+    const float *b = image + 2 * width * height;
 
-//         Tensor *x = tensor_from_data(image, 1, 32*32*3);
-//         x->requires_grad = 1;
-//         Tensor *conv = conv2d.forward(x);
-//         Tensor *h = linear1.forward(conv);
-//         Tensor *a1 = tensor_relu(h);
-//         Tensor *logits = linear2.forward(a1);
+    for (int i = 0; i < width * height; i++) {
+        fputc((uint8_t)(r[i] * 255.0f), f);
+        fputc((uint8_t)(g[i] * 255.0f), f);
+        fputc((uint8_t)(b[i] * 255.0f), f);
+    }
 
-//         float targets[10];
-//         create_one_hot(targets, label, 10);
-//         float grad_logits[10];
-//         compute_grad_logits(logits->data, targets, grad_logits, 10);
-//         printf("Label: %d, Predicted: %d\n", label, argmax(logits->data, 10));
+    fclose(f);
+}
 
-//         Tensor *grad_logits_tensor = tensor_from_data(grad_logits, 1, 10);
-//         tensor_backward(logits, grad_logits_tensor);
-//         // linear2.print_grad();
-//         // printf("==========================\n");
-//         // tensor_print_grad(a1);
-//         // printf("==========================\n");
-//         // linear1.print_grad();
-//         // conv2d.print_grad();
-//         tensor_update(linear2._tensor(), 0.001f);
-//         tensor_update(linear1._tensor(), 0.001f);
-//     }
-// }
+void test_conv2d() {
+    int label;
+
+    const int C_out = 3;
+    const int C_in = 3;
+    const int kernel_size = 3;
+    const int padding = 1;
+    const int stride = 1;
+    const int H = 32, W = 32;
+
+    // 建立卷積核權重張量 (C_out, C_in, K, K)
+    int shape_w[] = {C_out, C_in, kernel_size, kernel_size};
+    Tensor *w = tensor_create(4, shape_w, 1);
+
+    // 三種 kernel（每個 output channel 使用一種）
+    float k1[] = {1, 0, -1, 1, 0, -1, 1, 0, -1};   // Sobel x
+    float k2[] = {1, 1, 1, 0, 0, 0, -1, -1, -1};   // Sobel y
+    float k3[] = {0, -1, 0, -1, 5, -1, 0, -1, 0};  // Sharpen
+
+    for (int co = 0; co < C_out; co++) {
+        float *kernel = (co == 0) ? k1 : (co == 1 ? k2 : k3);
+        for (int ci = 0; ci < C_in; ci++) {
+            for (int k = 0; k < kernel_size * kernel_size; k++) {
+                int idx = ((co * C_in + ci) * kernel_size * kernel_size) + k;
+                w->data[idx] = kernel[k];
+            }
+        }
+    }
+
+    for (int pictureno = 0; pictureno < 5; pictureno++) {
+        float *image = parse_cifar10("./data/cifar-10-batches-bin/data_batch_1.bin", pictureno, &label);
+        if (!image) break;
+
+        // 儲存原始圖像
+        char original_name[64];
+        snprintf(original_name, sizeof(original_name), "images/original_%d.ppm", pictureno);
+        save_rgb_image_as_ppm(image, W, H, original_name);
+        printf("Saved original image: %s\n", original_name);
+
+        // 包裝輸入影像成 Tensor (1, 3, 32, 32)
+        int shape_x[] = {1, 3, H, W};
+        Tensor *x = tensor_create(4, shape_x, 1);
+        for (int c = 0; c < 3; c++)
+            for (int i = 0; i < H * W; i++) x->data[c * H * W + i] = image[c * H * W + i] / 255.0f;
+
+        // 前向卷積
+        Tensor *y = conv2d_forward(x, w ,padding, stride);  // output shape: (1, C_out, H, W)
+
+        int C_result = y->shape[1];
+        int H_result = y->shape[2];
+        int W_result = y->shape[3];
+
+        // 儲存每個 channel 圖像
+        for (int ch = 0; ch < C_result; ch++) {
+            char fname[64];
+            snprintf(fname, sizeof(fname), "images/conv_out_%d_channel%d.ppm", pictureno, ch);
+            save_tensor_channel_as_ppm(y, 0, ch, H_result, W_result, fname);
+            printf("Saved conv channel %d image: %s\n", ch, fname);
+        }
+    }
+
+    tensor_free(w);
+}

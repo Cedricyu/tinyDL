@@ -7,54 +7,14 @@
 extern "C" {
 #endif
 
-// CUDA kernels
-__global__ void conv2d_forward_kernel(const float *x,
-                                      const float *w,
-                                      float *y,
-                                      int batch_size,
-                                      int height,
-                                      int width,
-                                      int kernel_h,
-                                      int kernel_w,
-                                      int out_h,
-                                      int out_w,
-                                      int padding_h,
-                                      int padding_w,
-                                      int stride_h,
-                                      int stride_w);
-
-__global__ void conv2d_backward_input_kernel(const float *grad_out,
-                                             const float *w,
-                                             float *grad_x,
-                                             int batch_size,
-                                             int height,
-                                             int width,
-                                             int kernel_h,
-                                             int kernel_w,
-                                             int out_h,
-                                             int out_w,
-                                             int padding_h,
-                                             int padding_w,
-                                             int stride_h,
-                                             int stride_w);
-
-__global__ void conv2d_backward_weight_kernel(const float *grad_out,
-                                              const float *x,
-                                              float *grad_w,
-                                              int batch_size,
-                                              int height,
-                                              int width,
-                                              int kernel_h,
-                                              int kernel_w,
-                                              int out_h,
-                                              int out_w,
-                                              int padding_h,
-                                              int padding_w,
-                                              int stride_h,
-                                              int stride_w);
+__global__ void conv2d_forward_kernel(const float *x,  // (B, C_in, H, W)
+                                      const float *w,  // (C_out, C_in, K, K)
+                                      float *y,        // (B, C_out, H_out, W_out)
+                                      int B, int C_in, int H, int W, int K, int C_out, int H_out, int W_out,
+                                      int padding, int stride);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // CONV2DK_CUH
+#endif  // CONV2DK_CUH

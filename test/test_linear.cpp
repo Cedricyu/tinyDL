@@ -7,7 +7,7 @@
 #include "test.h"
 #include "visualize.h"
 
-#define VISUALIZE 1
+#define VISUALIZE 0
 
 void create_one_hot(float *target, int label, int num_classes) {
     for (int i = 0; i < num_classes; i++) {
@@ -77,11 +77,11 @@ class Model {
     ~Model();
 
     Tensor *forward(Tensor *x);
-    void backward(Tensor *output, float *grad_output, int batch_size, int output_dim);
+    void backward(Tensor *output, float *grad_output, int ndim, int *shape);
     void update(float lr);
 };
 
-Model::Model(int input_dim, int h1, int h2, int h3,int output_dim) {
+Model::Model(int input_dim, int h1, int h2, int h3, int output_dim) {
     linear1 = new Linear(input_dim, h1);
     linear2 = new Linear(h1, h2);
     linear3 = new Linear(h2, h3);
@@ -106,8 +106,8 @@ Tensor *Model::forward(Tensor *x) {
     return y;
 }
 
-void Model::backward(Tensor *output, float *grad_output, int batch_size, int output_dim) {
-    Tensor *grad = tensor_from_data(grad_output, batch_size, output_dim);
+void Model::backward(Tensor *output, float *grad_output, int ndim, int *shape) {
+    Tensor *grad = tensor_from_data(grad_output, ndim, shape);
     tensor_backward(output, grad);
 }
 
@@ -159,8 +159,7 @@ void test_linear() {
                 inputs[j * 2 + 1] = all_inputs[idx * 2 + 1];
                 targets[j] = all_targets[idx];
             }
-
-            Tensor *x = tensor_from_data(inputs, batch_size, input_dim);
+            Tensor *x = tensor_from_data_2d(inputs, batch_size, input_dim);
             x->requires_grad = 1;
 
             Tensor *y = linear_model.forward(x);
@@ -186,10 +185,10 @@ void test_linear() {
                 int pred = argmax(probs, output_dim);
                 if (pred == label) correct++;
             }
+            Tensor *grad = tensor_from_data_2d(grad_output, batch_size, output_dim);
+            int shape[2] = {batch_size, output_dim};
+            linear_model.backward(y, grad_output, 2, shape);
 
-            Tensor *grad = tensor_from_data(grad_output, batch_size, output_dim);
-
-            linear_model.backward(y, grad_output, batch_size, output_dim);
             linear_model.update(0.001f);  // 更新權重
 
             // 累加 epoch 的 loss 和正確數
@@ -218,7 +217,7 @@ void test_linear() {
             inputs[j * input_dim + 1] = all_inputs[idx * input_dim + 1];
         }
 
-        Tensor *input_tensor = tensor_from_data(inputs, curr_batch, input_dim);
+        Tensor *input_tensor = tensor_from_data_2d(inputs, curr_batch, input_dim);
         Tensor *output_tensor = linear_model.forward(input_tensor);
 
         // tensor_print(output_tensor);  // Debug
