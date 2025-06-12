@@ -59,3 +59,33 @@ void visualize_sdl(float *inputs, int *labels, int total_data) {
     SDL_DestroyWindow(win);
     SDL_Quit();
 }
+
+void show_image_sdl(float *image_data, int width, int height) {
+    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Window *window = SDL_CreateWindow("Image", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+                                          width * 4, height * 4, SDL_WINDOW_SHOWN);
+    SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
+
+    SDL_Texture *texture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB24,
+                                             SDL_TEXTUREACCESS_STREAMING, width, height);
+
+    uint8_t *rgb_buffer = (uint8_t *)malloc(width * height * 3);
+    for (int i = 0; i < width * height; i++) {
+        rgb_buffer[i * 3 + 0] = (uint8_t)(image_data[i] * 255);         // R
+        rgb_buffer[i * 3 + 1] = (uint8_t)(image_data[i + width * height] * 255); // G
+        rgb_buffer[i * 3 + 2] = (uint8_t)(image_data[i + 2 * width * height] * 255); // B
+    }
+
+    SDL_UpdateTexture(texture, NULL, rgb_buffer, width * 3);
+    SDL_RenderClear(renderer);
+    SDL_RenderCopy(renderer, texture, NULL, NULL);
+    SDL_RenderPresent(renderer);
+
+    SDL_Delay(1000);  // 顯示 1 秒
+    SDL_DestroyTexture(texture);
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+
+    free(rgb_buffer);
+}

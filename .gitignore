@@ -34,6 +34,7 @@
 **/docs/_build/*
 **/generated/*
 /data/
+/images/
 
 # Test Outputs
 **/runs/*

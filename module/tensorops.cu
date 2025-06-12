@@ -5,17 +5,23 @@
 #include <cuda_runtime.h>
 
 Tensor *tensor_matmul(Tensor *a, Tensor *b) {
-    int M = a->batch_size;
-    int K = a->features;
-    int N = b->features;
-
-    if (K != b->batch_size) {
-        printf("Shape mismatch in tensor_matmul: (%d x %d) × (%d x %d)\n", M, K, b->batch_size, N);
+    if (a->ndim != 2 || b->ndim != 2) {
+        printf("MatMul only supports 2D tensors.\n");
         return NULL;
     }
 
-    Tensor *out = tensor_create(M, N, a->requires_grad || b->requires_grad);
+    int M = a->shape[0];
+    int K = a->shape[1];
+    int Kb = b->shape[0];
+    int N = b->shape[1];
 
+    if (K != Kb) {
+        printf("Shape mismatch in tensor_matmul: (%d x %d) × (%d x %d)\n", M, K, Kb, N);
+        return NULL;
+    }
+
+    int out_shape[] = {M, N};
+    Tensor *out = tensor_create(2, out_shape, a->requires_grad || b->requires_grad);
     // Device memory
     float *d_a, *d_b, *d_out;
     cudaMalloc(&d_a, M * K * sizeof(float));
@@ -51,11 +57,17 @@ Tensor *tensor_matmul(Tensor *a, Tensor *b) {
 }
 
 Tensor *tensor_matmul_backward_a(Tensor *a, Tensor *b, Tensor *grad_out) {
-    int M = a->batch_size;
-    int K = a->features;
-    int N = b->features;
+    if (a->ndim != 2 || b->ndim != 2) {
+        printf("MatMul only supports 2D tensors.\n");
+        return NULL;
+    }
 
-    Tensor *grad_a = tensor_create(M, K, 0);  // 新建 Tensor 儲存梯度
+    int M = a->shape[0];
+    int K = a->shape[1];
+    int N = b->shape[1];
+
+    int shape[2] = {M, K};
+    Tensor *grad_a = tensor_create(2, shape, 0);
 
     // GPU 記憶體配置
     float *d_grad_out, *d_b, *d_grad_a;
@@ -89,11 +101,17 @@ Tensor *tensor_matmul_backward_a(Tensor *a, Tensor *b, Tensor *grad_out) {
 }
 
 Tensor *tensor_matmul_backward_b(Tensor *a, Tensor *b, Tensor *grad_out) {
-    int M = a->batch_size;
-    int K = a->features;
-    int N = b->features;
+    if (a->ndim != 2 || b->ndim != 2) {
+        printf("MatMul only supports 2D tensors.\n");
+        return NULL;
+    }
 
-    Tensor *grad_b = tensor_create(K, N, 0);  // 新建 Tensor 儲存梯度
+    int M = a->shape[0];
+    int K = a->shape[1];
+    int N = b->shape[1];
+
+    int shape[2] = {K, M};
+    Tensor *grad_b = tensor_create(2, shape, 0);  // 新建 Tensor 儲存梯度
 
     float *d_a, *d_a_T, *d_grad_out, *d_grad_b;
     cudaMalloc(&d_a, M * K * sizeof(float));
@@ -172,23 +190,30 @@ void tensor_print_graph_dot(Tensor *self) {
     printf("}\n");
 }
 
+inline int tensor_get_dim(Tensor *t, int dim) { return (dim < t->ndim) ? t->shape[dim] : -1; }
+
+inline int tensor_numel(int ndim, int *shape) {
+    int total = 1;
+    for (int i = 0; i < ndim; ++i) total *= shape[i];
+    return total;
+}
+
 void tensor_grad(Tensor *t, Tensor *grad) {
-    if (!t->requires_grad) {
-        printf("Tensor does not require gradient.\n");
-        return;
-    }
+    if (!t->requires_grad) return;
+
+    int total = tensor_numel(t->ndim, t->shape);
     if (!t->grad) {
-        t->grad = (float *)calloc(t->batch_size * t->features, sizeof(float));
+        t->grad = (float *)calloc(total, sizeof(float));
     }
-    for (int i = 0; i < t->batch_size * t->features; ++i) {
+    for (int i = 0; i < total; ++i) {
         t->grad[i] = -grad->data[i];
     }
 }
 
 Tensor *tensor_relu_backward(Tensor *x, Tensor *n, Tensor *grad_out) {
-    int size = x->batch_size * x->features;
+    int size = tensor_numel(x->ndim, x->shape);
 
-    Tensor *grad_x = tensor_create(x->batch_size, x->features, 0);
+    Tensor *grad_x = tensor_create(x->ndim, x->shape, 0);  // 保持形狀一致
 
     float *d_x, *d_grad_out, *d_grad_x;
     cudaMalloc(&d_x, size * sizeof(float));
@@ -213,8 +238,8 @@ Tensor *tensor_relu_backward(Tensor *x, Tensor *n, Tensor *grad_out) {
 }
 
 Tensor *tensor_relu(Tensor *x) {
-    Tensor *out = tensor_create(x->batch_size, x->features, x->requires_grad);
-    int size = x->batch_size * x->features;
+    int size = tensor_numel(x->ndim, x->shape);
+    Tensor *out = tensor_create(x->ndim, x->shape, x->requires_grad);
 
     float *d_x, *d_out;
     cudaMalloc(&d_x, size * sizeof(float));
@@ -244,7 +269,9 @@ void tensor_print_grad(Tensor *t) {
         return;
     }
     printf("Tensor grad: ");
-    for (int i = 0; i < t->batch_size * t->features; ++i) {
+    int total = tensor_numel(t->ndim, t->shape);
+    printf("Tensor grad: ");
+    for (int i = 0; i < total; ++i) {
         printf("%f ", t->grad[i]);
     }
     printf("\n");
@@ -256,7 +283,8 @@ void fill_tensor_with_random(Tensor *t) {
         perror("fopen");
         exit(1);
     }
-    for (int i = 0; i < t->batch_size * t->features; i++) {
+    int total = tensor_numel(t->ndim, t->shape);
+    for (int i = 0; i < total; i++) {
         u_int32_t rand_int;
         fread(&rand_int, sizeof(rand_int), 1, fp);
         t->data[i] = 2.0f * (rand_int / (double)UINT32_MAX) - 1.0f;
@@ -266,11 +294,15 @@ void fill_tensor_with_random(Tensor *t) {
 
 Tensor *tensor_clone(Tensor *t) {
     Tensor *clone = (Tensor *)malloc(sizeof(Tensor));
-    clone->batch_size = t->batch_size;
-    clone->features = t->features;
+    clone->ndim = t->ndim;
+    clone->shape = (int *)malloc(sizeof(int) * t->ndim);
+    memcpy(clone->shape, t->shape, sizeof(int) * t->ndim);
+    int total = tensor_numel(t->ndim, t->shape);
     clone->requires_grad = t->requires_grad;
-    clone->data = (float *)malloc(t->batch_size * t->features * sizeof(float));
-    clone->grad = t->requires_grad ? (float *)malloc(t->batch_size * t->features * sizeof(float)) : NULL;
-    memcpy(clone->data, t->data, t->batch_size * t->features * sizeof(float));
+    clone->data = (float *)malloc(total * sizeof(float));
+    memcpy(clone->data, t->data, total * sizeof(float));
+    clone->grad = (t->requires_grad) ? (float *)calloc(total, sizeof(float)) : NULL;
+    clone->deps = NULL;
+    clone->num_deps = 0;
     return clone;
 }
