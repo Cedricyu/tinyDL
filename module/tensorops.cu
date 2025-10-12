@@ -166,9 +166,7 @@ void tensor_backward(Tensor *self, Tensor *grad_out) {
             tensor_backward(dep->tensor, grad);
             tensor_free(grad);
         }
-    } else {
-        printf("No dependencies found for backward pass.\n");
-    }
+    } 
 }
 
 void tensor_print_graph_dot_rec(Tensor *self) {

@@ -1,4 +1,9 @@
-# 🛠️ Build & Run Guide
+# Developing Log
+
+https://hackmd.io/@u-vCPj8uT8aJ28UclNl_DA/BkH9sB7lex
+
+
+## 🛠️ Build & Run Guide
 
 This project uses a Makefile to compile and run a simple CUDA-based neural network.
 
