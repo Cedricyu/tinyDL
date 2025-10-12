@@ -1,6 +1,17 @@
-# Developing Log
+## Project Purpose
 
-https://hackmd.io/@u-vCPj8uT8aJ28UclNl_DA/BkH9sB7lex
+```plaintext
+The goal of this project is to explore and analyze how CUDA APIs can optimize and accelerate neural network computation.
+By implementing fundamental neural network components (such as Linear layers and the SGD optimizer) directly in CUDA, this project aims to:
+
+Understand how CUDA kernel design and memory access patterns affect performance.
+
+Investigate how GPU parallelism can accelerate both training and inference processes.
+
+Identify bottlenecks across different layers and propose potential optimization strategies.
+
+Build an observable, testable, and extensible CUDA-based neural network framework, serving as a foundation for more complex architectures such as CNNs or Transformers.
+```
 
 
 ## 🛠️ Build & Run Guide
@@ -96,3 +107,7 @@ Clean generated files and executables.
 ```bash
 make clean
 ```
+
+## Developing Log
+
+https://hackmd.io/@u-vCPj8uT8aJ28UclNl_DA/BkH9sB7lex
